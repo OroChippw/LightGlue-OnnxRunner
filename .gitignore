@@ -1,0 +1,23 @@
+# 3rdparty
+third_party
+
+# build
+build/
+
+# .vscode
+.vscode/
+
+# data
+data/
+
+# dynamic library/static library
+*.lib
+*.a
+*.dll
+*.so
+*.exp
+*.pdb
+
+# model
+onnx_models
+
