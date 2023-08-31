@@ -1,0 +1,111 @@
+/*********************************
+    Copyright: OroChippw
+    Author: OroChippw
+    Date: 2023.08.31
+    Description: 
+*********************************/
+#include <iostream>
+#include <thread>
+#include <vector>
+#include <chrono>
+#include <algorithm>
+#include <opencv2/opencv.hpp>
+
+#include "Configuration.h"
+#include "LightGlueOnnxRunner.h"
+
+
+int main(int argc , char* argv[])
+{
+    /* ****** CONFIG START ****** */
+    std::string model_path = "${OnnxModelPath}";
+    // Type of feature extractor. Supported extractors are 'superpoint' and 'disk'.
+    std::string extractor_type = "${ModelExtractorType}";
+    // Sample image size for ONNX tracing , resize the longer side of the images to this value. Supported image size {512 , 1024 , 2048}
+    unsigned int image_size = 1024; 
+
+    bool end2end = true;
+    std::string device = "${Device}"; // "cpu" or "cuda"
+    
+    std::string image_path1 = "${YourImageDirPath1}";
+    std::string image_path2 = "${YourImageDirPath2}";
+    std::string save_path = "${YourResultSavePath}";
+
+    /* ****** CONFIG END ****** */
+    
+    /* Temp Start */
+    model_path = "D:\\OroChiLab\\LightGlue-OnnxRunner\\models\\superpoint\\superpoint_lightglue_end2end.onnx";
+    extractor_type = "SuperPoint";
+    image_path1 = "D:\\OroChiLab\\LightGlue\\data\\dir0";
+    image_path2 = "D:\\OroChiLab\\LightGlue\\data\\dir1";
+    device = "cpu";
+    /* Temp End */
+
+    Configuration cfg;
+    cfg.modelPath = model_path;
+    cfg.extractorType = extractor_type;
+    cfg.isEndtoEnd = end2end;
+    cfg.image_size = image_size;
+    cfg.device = device;
+
+    std::transform(cfg.extractorType.begin() , cfg.extractorType.end() , \
+            cfg.extractorType.begin() , ::tolower);
+    if (cfg.extractorType != "superpoint" && cfg.extractorType != "disk")
+    {
+        std::cerr << "[ERROR] Unsupported feature extractor type: " << extractor_type << std::endl;
+
+        return EXIT_FAILURE;
+    }
+
+    std::vector<cv::Mat> image_matlist1;
+    std::vector<cv::String> image_filelist1;
+    std::vector<cv::Mat> image_matlist2;
+    std::vector<cv::String> image_filelist2;
+    cv::glob(image_path1 , image_filelist1);
+    cv::glob(image_path2 , image_filelist2);
+    if (image_filelist1.size() != image_filelist2.size())
+    {
+        std::cout << "[INFO] Image Matlist1 size : " << image_matlist1.size() << std::endl;
+        std::cout << "[INFO] Image Matlist2 size : " << image_matlist2.size() << std::endl;
+        std::cerr << "[ERROR] The number of images in the source folder and \
+                    the destination folder is inconsistent" << std::endl;
+
+        return EXIT_FAILURE;
+    }
+
+    std::cout << "[INFO] => Building Image Matlist1" << std::endl;
+    for (const auto& file : image_filelist1)
+    {
+        std::cout << "[FILE INFO] : " << file << std::endl;
+        image_matlist1.emplace_back(cv::imread(file , cv::IMREAD_COLOR));
+    }
+
+    std::cout << "[INFO] => Building Image Matlist2" << std::endl;
+    for (const auto& file : image_filelist2)
+    {
+        std::cout << "[FILE INFO] : " << file << std::endl;
+        image_matlist2.emplace_back(cv::imread(file , cv::IMREAD_COLOR));
+    }
+
+    // Init Onnxruntime Env
+    LightGlueOnnxRunner FeatureMatcher(std::thread::hardware_concurrency());
+    FeatureMatcher.InitOrtEnv(cfg);
+    
+    auto iter1 = image_matlist1.begin();
+    auto iter2 = image_matlist2.begin();
+
+    for (;iter1 != image_matlist1.end() && iter2 !=image_matlist2.end() ; ++iter1, ++iter2)
+    {
+        auto startTime = std::chrono::steady_clock::now();
+        auto result = FeatureMatcher.InferenceImage(cfg , *iter1 , *iter2);
+        auto endTime = std::chrono::steady_clock::now();
+
+        auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
+        std::cout << "[INFO] LightGlueOnnxRunner single picture whole process takes time : " \
+                    << elapsedTime << " ms" << std::endl;
+    }
+    
+    return EXIT_SUCCESS;
+}
+
+

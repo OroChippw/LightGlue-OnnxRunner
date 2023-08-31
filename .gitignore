@@ -19,5 +19,7 @@ data/
 *.pdb
 
 # model
-onnx_models
+*.pth
+*.onnx
+
 

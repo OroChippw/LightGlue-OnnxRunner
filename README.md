@@ -14,7 +14,7 @@ LightGlue-OnnxRunner is an example using
 # onnxruntime 3rdparty
 This repository use onnxruntime-win-x64-1.14.1
 # opencv 3rdparty
-This repository use opencv4.7.0
+This repository use opencv4.8.0
 # CXX_STANDARD 17
 ```
 ### Build and Run
@@ -31,7 +31,9 @@ cmake --build .
 # cmkae --build . --config Release
 ```
 ### Model Checkpoints(TODO)
+#### Decouple
 
+#### End-to-End🌟🌟🌟
 
 
 ### License
