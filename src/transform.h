@@ -49,3 +49,10 @@ cv::Mat ResizeImageByLongestSide(cv::Mat Image , int size , \
 	return resizeImage;
 }
 
+cv::Mat RGB2Grayscale(cv::Mat& Image) {
+    cv::Mat resultImage;
+    cv::cvtColor(Image, resultImage, cv::COLOR_BGR2GRAY);
+
+    return resultImage;
+}
+
