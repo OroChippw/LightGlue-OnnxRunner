@@ -5,6 +5,7 @@
     Description:
 *********************************/
 #pragma once
+#pragma warning(disable:4819) 
 
 #include <opencv2/opencv.hpp>
 #include <onnxruntime_cxx_api.h>
@@ -22,20 +23,26 @@ private:
     std::unique_ptr<Ort::Session> session;
     Ort::AllocatorWithDefaultOptions allocator;
 
-    std::vector<std::string> InputNodeNames;
+    std::vector<char*> InputNodeNames;
     std::vector<std::vector<int64_t>> InputNodeShapes;
 
-    std::vector<std::string> OutputNodeNames;
+    std::vector<char*> OutputNodeNames;
     std::vector<std::vector<int64_t>> OutputNodeShapes;
+
+    float matchThresh = 0.0f;
+    std::vector<Ort::Value> output_tensors;
 
 private:
     cv::Mat PreProcess(Configuration cfg , const cv::Mat& srcImage);
     int Inference(Configuration cfg , const cv::Mat& src , const cv::Mat& dest);
-    int PostProcess();
+    int PostProcess(Configuration cfg);
 
 public:
     explicit LightGlueOnnxRunner(unsigned int num_threads = 1);
     ~LightGlueOnnxRunner();
+
+    float GetMatchThresh();
+    void SetMatchThresh(float thresh);
 
     int InitOrtEnv(Configuration cfg);
     
