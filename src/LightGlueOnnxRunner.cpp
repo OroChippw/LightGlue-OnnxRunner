@@ -68,7 +68,8 @@ int LightGlueOnnxRunner::InitOrtEnv(Configuration cfg)
 cv::Mat LightGlueOnnxRunner::PreProcess(Configuration cfg , const cv::Mat& Image)
 {
 	std::cout << "[INFO] Image info :  width : " << Image.cols << " height :  " << Image.rows << std::endl;
-    cv::Mat resultImage = NormalizeImage(ResizeImageByLongestSide(Image , cfg.image_size));
+    cv::Mat resultImage = NormalizeImage(ResizeImage(Image ,cfg.image_size , scale));
+    std::cout << "[INFO] Scale from 1.0f to "<< scale << std::endl;
     if (cfg.extractorType == "superpoint")
     {
         resultImage = RGB2Grayscale(resultImage);
@@ -82,13 +83,13 @@ int LightGlueOnnxRunner::Inference(Configuration cfg , const cv::Mat& src , cons
     try 
     {   
         // Dynamic InputNodeShapes is [1,3,-1,-1]  
-        std::cout << "src : " << src.size() << std::endl;
-        std::cout << "dest : " << dest.size() << std::endl;
+        // std::cout << "src : " << src.size() << std::endl;
+        // std::cout << "dest : " << dest.size() << std::endl;
 
-        InputNodeShapes[0][3] = src.size[0];
-        InputNodeShapes[0][2] = src.size[1];
-        InputNodeShapes[1][3] = dest.size[0];
-        InputNodeShapes[1][2] = dest.size[1];
+        InputNodeShapes[0][2] = src.size[0];
+        InputNodeShapes[0][3] = src.size[1];
+        InputNodeShapes[1][2] = dest.size[0];
+        InputNodeShapes[1][3] = dest.size[1];
 
         std::vector<float> srcInputTensorValues(src.total());
         srcInputTensorValues.assign(src.begin<float>() , src.end<float>());
@@ -98,11 +99,11 @@ int LightGlueOnnxRunner::Inference(Configuration cfg , const cv::Mat& src , cons
 
         auto memory_info_handler = Ort::MemoryInfo::CreateCpu(OrtAllocatorType::OrtDeviceAllocator, OrtMemType::OrtMemTypeCPU);
         std::vector<Ort::Value> input_tensors;
-        
         input_tensors.push_back(Ort::Value::CreateTensor<float>(
             memory_info_handler , srcInputTensorValues.data() , src.total() , \
             InputNodeShapes[0].data() , InputNodeShapes[0].size()
         ));
+
         input_tensors.push_back(Ort::Value::CreateTensor<float>(
             memory_info_handler , destInputTensorValues.data() , dest.total() , \
             InputNodeShapes[1].data() , InputNodeShapes[1].size()
@@ -137,44 +138,83 @@ int LightGlueOnnxRunner::Inference(Configuration cfg , const cv::Mat& src , cons
     return EXIT_SUCCESS;
 }
 
-int LightGlueOnnxRunner::PostProcess(Configuration cfg)
+std::pair<std::vector<float_t>, std::vector<float_t>> LightGlueOnnxRunner::PostProcess(Configuration cfg)
 {
     try{
         std::vector<int64_t> kpts0_Shape = output_tensors[0].GetTensorTypeAndShapeInfo().GetShape();
         int64_t* kpts0 = (int64_t*)output_tensors[0].GetTensorMutableData<void>();
-        int kpts0_Counts = kpts0_Shape[1];
-        std::cout << "kpts0_Counts : " << kpts0_Counts << std::endl;
+        printf("[RESULT INFO] kpts0 Shape : (%d , %d , %d)\n" , kpts0_Shape[0] , kpts0_Shape[1] , kpts0_Shape[2]);
 
         std::vector<int64_t> kpts1_Shape = output_tensors[1].GetTensorTypeAndShapeInfo().GetShape();
         int64_t* kpts1 = (int64_t*)output_tensors[1].GetTensorMutableData<void>();
-        int kpts1_Counts = kpts1_Shape[1];
-        std::cout << "kpts1_Counts : " << kpts1_Counts << std::endl;
+        printf("[RESULT INFO] kpts1 Shape : (%d , %d , %d)\n" , kpts1_Shape[0] , kpts1_Shape[1] , kpts1_Shape[2]);
 
         std::vector<int64_t> matches0_Shape = output_tensors[2].GetTensorTypeAndShapeInfo().GetShape();
         int64_t* matches0 = (int64_t*)output_tensors[2].GetTensorMutableData<void>();
         int match0_Counts = matches0_Shape[1];
-        std::cout << "match0_Counts : " << match0_Counts << std::endl;
+        printf("[RESULT INFO] matches0 Shape : (%d , %d)\n" , matches0_Shape[0] , matches0_Shape[1]);
 
         std::vector<int64_t> matches1_Shape = output_tensors[3].GetTensorTypeAndShapeInfo().GetShape();
         int64_t* matches1 = (int64_t*)output_tensors[3].GetTensorMutableData<void>();
         int match1_Counts = matches1_Shape[1];
-        std::cout << "match1_Counts : " << match1_Counts << std::endl;
+        printf("[RESULT INFO] matches1 Shape : (%d , %d)\n" , matches1_Shape[0] , matches1_Shape[1]);
 
         std::vector<int64_t> mscore0_Shape = output_tensors[4].GetTensorTypeAndShapeInfo().GetShape();
         float* mscores0 = (float*)output_tensors[4].GetTensorMutableData<void>();
         std::vector<int64_t> mscore1_Shape = output_tensors[5].GetTensorTypeAndShapeInfo().GetShape();
         float* mscores1 = (float*)output_tensors[5].GetTensorMutableData<void>();
-        std::cout << "mscores0 : " << *mscores0 << std::endl;
 
-        std::cout << "mscores1 : " << *mscores1 << std::endl;
+        float* kpts0_f = new float[kpts0_Shape[1]];
+        float* kpts1_f = new float[kpts1_Shape[1]];
+
+        // Process kpts0 and kpts1
+        for (int i = 0; i < kpts0_Shape[1]; ++i) {
+            kpts0_f[i] = (kpts0[i] + 0.5) / scale - 0.5;
+        }
+        for (int i = 0; i < kpts1_Shape[1]; ++i) {
+            kpts1_f[i] = (kpts1[i] + 0.5) / scale - 0.5;
+        }
+
+        // Create match indices
+        std::vector<int64_t> validIndices;
+        for (int i = 0; i < matches0_Shape[1]; ++i) {
+            if (matches0[i] > -1) {
+                validIndices.push_back(i);
+            }
+        }
+
+        std::vector<int64_t> matches;
+        std::vector<float_t> m_kpts0;
+        std::vector<float_t> m_kpts1;
+        for (int i : validIndices) {
+            matches.push_back(i);
+            matches.push_back(matches0[i]);
+        }
+        // printf("Matches:\n");
+        // for (size_t i = 0; i < matches.size(); i += 2) {
+        //     printf("(%lld, %lld)\n", matches[i], matches[i + 1]);
+        // }
+
+        for (size_t i = 0; i < matches.size(); i += 2) {
+            if (i < matches.size() && matches[i] < matches0_Shape[1] && matches[i + 1] < matches1_Shape[1]) 
+            {
+                m_kpts0.push_back(kpts0_f[matches[i]]);
+                m_kpts1.push_back(kpts1_f[matches[i + 1]]);
+            }
+        }
+
+        delete[] kpts0_f;
+        delete[] kpts1_f;
+
+        return std::make_pair(m_kpts0 , m_kpts1);
     }
     catch(const std::exception& ex)
     {
         std::cerr << "[ERROR] PostProcess failed : " << ex.what() << std::endl;
-        return EXIT_FAILURE;
+        return ;
     }
 
-    return EXIT_SUCCESS;
+    return ;
 }
 
 cv::Mat LightGlueOnnxRunner::InferenceImage(Configuration cfg , 
