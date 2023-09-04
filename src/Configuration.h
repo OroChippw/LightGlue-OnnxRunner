@@ -13,8 +13,10 @@ struct Configuration
     std::string modelPath;
     std::string extractorType;
     bool isEndtoEnd = true;
+    bool GrayScale = false;
 
     unsigned int image_size = 1024; 
 
     std::string device;
+    bool viz = false;
 };
