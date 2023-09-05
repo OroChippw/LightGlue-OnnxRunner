@@ -138,7 +138,7 @@ int LightGlueOnnxRunner::Inference(Configuration cfg , const cv::Mat& src , cons
     return EXIT_SUCCESS;
 }
 
-std::pair<std::vector<float_t>, std::vector<float_t>> LightGlueOnnxRunner::PostProcess(Configuration cfg)
+int LightGlueOnnxRunner::PostProcess(Configuration cfg)
 {
     try{
         std::vector<int64_t> kpts0_Shape = output_tensors[0].GetTensorTypeAndShapeInfo().GetShape();
@@ -184,37 +184,43 @@ std::pair<std::vector<float_t>, std::vector<float_t>> LightGlueOnnxRunner::PostP
         }
 
         std::vector<int64_t> matches;
-        std::vector<float_t> m_kpts0;
-        std::vector<float_t> m_kpts1;
+        std::vector<cv::Point2f> m_kpts0;
+        std::vector<cv::Point2f> m_kpts1;
         for (int i : validIndices) {
             matches.push_back(i);
             matches.push_back(matches0[i]);
         }
-        // printf("Matches:\n");
-        // for (size_t i = 0; i < matches.size(); i += 2) {
-        //     printf("(%lld, %lld)\n", matches[i], matches[i + 1]);
-        // }
+        printf("Matches:\n");
+        for (size_t i = 0; i < matches.size(); i += 2) {
+            printf("(%lld, %lld)\n", matches[i], matches[i + 1]);
+        }
 
+        // TODO
         for (size_t i = 0; i < matches.size(); i += 2) {
             if (i < matches.size() && matches[i] < matches0_Shape[1] && matches[i + 1] < matches1_Shape[1]) 
             {
-                m_kpts0.push_back(kpts0_f[matches[i]]);
-                m_kpts1.push_back(kpts1_f[matches[i + 1]]);
+                // m_kpts0.push_back(kpts0_f[matches[i]]);
+                // m_kpts1.push_back(kpts1_f[matches[i + 1]]);
+                m_kpts0.push_back(cv::Point2f(kpts0_f[matches[i]] , kpts0_f[matches[i + 1]]));
+                m_kpts1.push_back(cv::Point2f(kpts1_f[matches[i]] , kpts1_f[matches[i + 1]]));
             }
         }
 
+        keypoints_result.first = m_kpts0;
+        keypoints_result.second = m_kpts1;
+
         delete[] kpts0_f;
         delete[] kpts1_f;
-
-        return std::make_pair(m_kpts0 , m_kpts1);
+        
+        std::cout << "[INFO] Postprocessing operation completed successfully" << std::endl;
     }
     catch(const std::exception& ex)
     {
         std::cerr << "[ERROR] PostProcess failed : " << ex.what() << std::endl;
-        return ;
+        return EXIT_FAILURE;
     }
 
-    return ;
+    return EXIT_SUCCESS;
 }
 
 cv::Mat LightGlueOnnxRunner::InferenceImage(Configuration cfg , 
@@ -224,15 +230,26 @@ cv::Mat LightGlueOnnxRunner::InferenceImage(Configuration cfg ,
 
     if (srcImage.empty() || destImage.empty())
 	{
-		throw  "[ERROR] Image EmptyError ";
+		throw  "[ERROR] ImageEmptyError ";
 	}
-    std::cout << "[INFO] => PreProcess srcImage" << std::endl;
-    cv::Mat src = PreProcess(cfg , srcImage);
-    std::cout << "[INFO] => PreProcess destImage" << std::endl;
-    cv::Mat dest = PreProcess(cfg , destImage);
+    cv::Mat srcImage_copy = cv::Mat(srcImage);
+    cv::Mat destImage_copy = cv::Mat(destImage);
 
+    std::cout << "[INFO] => PreProcess srcImage" << std::endl;
+    cv::Mat src = PreProcess(cfg , srcImage_copy);
+    std::cout << "[INFO] => PreProcess destImage" << std::endl;
+    cv::Mat dest = PreProcess(cfg , destImage_copy);
+    // Inference
     Inference(cfg , src , dest);
     PostProcess(cfg);
+
+    if (cfg.viz)
+    {
+        std::vector<cv::Mat> ImagesPair = {srcImage , destImage};
+        std::vector<std::string> TitlePair = {"srcImage" , "destImage"};
+        auto kpts_pair = GetKeypointsResult();
+        plotImages(ImagesPair , kpts_pair , TitlePair);
+    }
 
     return cv::Mat();
 }
@@ -245,6 +262,11 @@ float LightGlueOnnxRunner::GetMatchThresh()
 void LightGlueOnnxRunner::SetMatchThresh(float thresh)
 {
     this->matchThresh = thresh;
+}
+
+std::pair<std::vector<cv::Point2f>, std::vector<cv::Point2f>> LightGlueOnnxRunner::GetKeypointsResult()
+{
+    return this->keypoints_result;
 }
 
 LightGlueOnnxRunner::LightGlueOnnxRunner(unsigned int threads) : \

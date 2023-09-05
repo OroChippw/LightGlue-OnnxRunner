@@ -15,7 +15,7 @@ struct Configuration
     bool isEndtoEnd = true;
     bool GrayScale = false;
 
-    unsigned int image_size = 1024; 
+    unsigned int image_size = 512; 
 
     std::string device;
     bool viz = false;
