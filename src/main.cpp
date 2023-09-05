@@ -55,7 +55,7 @@ int main(int argc , char* argv[])
     bool grayscale = false;
     bool end2end = true;
     std::string device = "${Device}"; // "cpu" or "cuda"
-    bool viz = false;
+    bool viz = true;
 
     std::string image_path1 = "${YourImageDirPath1}";
     std::string image_path2 = "${YourImageDirPath2}";
@@ -66,8 +66,8 @@ int main(int argc , char* argv[])
     /* Temp Start */
     model_path = "D:\\OroChiLab\\LightGlue-OnnxRunner\\models\\superpoint\\superpoint_lightglue_end2end.onnx";
     extractor_type = "SuperPoint";
-    image_path1 = "D:\\OroChiLab\\LightGlue\\data\\dir0";
-    image_path2 = "D:\\OroChiLab\\LightGlue\\data\\dir1";
+    image_path1 = "D:\\OroChiLab\\LightGlue\\data\\dir_0";
+    image_path2 = "D:\\OroChiLab\\LightGlue\\data\\dir_1";
     device = "cpu";
     /* Temp End */
 
@@ -78,6 +78,7 @@ int main(int argc , char* argv[])
     cfg.GrayScale = grayscale;
     cfg.image_size = image_size;
     cfg.device = device;
+    cfg.viz = viz;
 
     std::transform(cfg.extractorType.begin() , cfg.extractorType.end() , \
             cfg.extractorType.begin() , ::tolower);

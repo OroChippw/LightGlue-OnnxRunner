@@ -36,11 +36,12 @@ private:
     float scales1 = 1.0f;
 
     std::vector<Ort::Value> output_tensors;
+    std::pair<std::vector<cv::Point2f>, std::vector<cv::Point2f>> keypoints_result;
 
 private:
     cv::Mat PreProcess(Configuration cfg , const cv::Mat& srcImage);
     int Inference(Configuration cfg , const cv::Mat& src , const cv::Mat& dest);
-    std::pair<std::vector<float_t>, std::vector<float_t>> PostProcess(Configuration cfg);
+    int PostProcess(Configuration cfg);
 
 public:
     explicit LightGlueOnnxRunner(unsigned int num_threads = 1);
@@ -48,6 +49,8 @@ public:
 
     float GetMatchThresh();
     void SetMatchThresh(float thresh);
+
+    std::pair<std::vector<cv::Point2f>, std::vector<cv::Point2f>> GetKeypointsResult();
 
     int InitOrtEnv(Configuration cfg);
     
