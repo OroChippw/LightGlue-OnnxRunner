@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <opencv2/opencv.hpp>
 
+#include "viz2d.h"
 #include "Configuration.h"
 #include "LightGlueOnnxRunner.h"
 
@@ -115,15 +116,23 @@ int main(int argc , char* argv[])
     auto iter1 = image_matlist1.begin();
     auto iter2 = image_matlist2.begin();
 
-    for (;iter1 != image_matlist1.end() && iter2 !=image_matlist2.end() ; ++iter1, ++iter2)
+    for (;iter1 != image_matlist1.end() && iter2 !=image_matlist2.end() ; \
+            ++iter1, ++iter2)
     {
         auto startTime = std::chrono::steady_clock::now();
-        auto result = FeatureMatcher.InferenceImage(cfg , *iter1 , *iter2);
+        auto kpts_result = FeatureMatcher.InferenceImage(cfg , *iter1 , *iter2);
         auto endTime = std::chrono::steady_clock::now();
 
         auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
         std::cout << "[INFO] LightGlueOnnxRunner single picture whole process takes time : " \
                     << elapsedTime << " ms" << std::endl;
+        if (cfg.viz)
+        {
+            std::vector<cv::Mat> imagesPair = {*iter1 , *iter2};
+            std::vector<std::string> titlePair = {"srcImage" , "destImage"};
+            cv::Mat figure = plotImages(imagesPair , kpts_result , titlePair);
+        }
+        auto kpts = FeatureMatcher.GetKeypointsResult();
     }
     
     return EXIT_SUCCESS;

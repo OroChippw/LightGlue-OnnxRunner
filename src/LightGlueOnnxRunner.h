@@ -54,7 +54,7 @@ public:
 
     int InitOrtEnv(Configuration cfg);
     
-    cv::Mat InferenceImage(Configuration cfg , \
+    std::pair<std::vector<cv::Point2f>, std::vector<cv::Point2f>> InferenceImage(Configuration cfg , \
             const cv::Mat& srcImage, const cv::Mat& destImage);
 
 };
