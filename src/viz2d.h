@@ -10,11 +10,29 @@
 #include <numeric>
 #include <opencv2/opencv.hpp>
 
-void plotImages(const std::vector<cv::Mat>& Images , \
+void plotMatches(const cv::Mat& figure , const std::vector<cv::Point2f>& kpts0, \
+                const std::vector<cv::Point2f>& kpts1, int x_offset = 0 , \
+                const cv::Scalar& color = cv::Scalar(0, 255, 0), float lw = 1, int ps = 1)
+{
+    assert(kpts0.size() == kpts1.size());
+    if (lw > 0)
+    {
+        for (unsigned int i = 0 ; i  < kpts0.size() ; i++)
+        {
+            cv::Point2f pt0 = kpts0[i];
+            cv::Point2f pt1 = kpts1[i];
+            pt1.x += x_offset;
+            cv::line(figure, pt0, pt1, color, lw);
+            cv::circle(figure, pt0, ps, color, -1);
+            cv::circle(figure, pt1, ps, color, -1);
+        }
+    }
+}
+
+cv::Mat plotImages(const std::vector<cv::Mat>& Images , \
                 std::pair<std::vector<cv::Point2f>, std::vector<cv::Point2f>> kpts_pair , \
                 const std::vector<std::string>& Titles = std::vector<std::string>(1 , "image") , \
-                const std::vector<std::string>& Cmaps = std::vector<std::string>(1 , "gray") , \
-                int dpi = 100, bool adaptive = true)
+                int dpi = 100, bool adaptive = true , float pad = 0.1f , bool show = true)
 {
     /*
     Func:
@@ -22,12 +40,11 @@ void plotImages(const std::vector<cv::Mat>& Images , \
     Args:
         imgs: a list of cv::Mat images, RGB (H, W, 3) or mono (H, W).
         titles: a list of strings, as titles for each image.
-        cmaps: colormaps for monochrome images.
         adaptive: whether the figure size should fit the image aspect ratios.
     */
     try
     {
-        int n = static_cast<int>(Images.size());
+        unsigned int n = static_cast<int>(Images.size());
         std::vector<double> ratios;
 
         for (const auto& image : Images) {
@@ -41,18 +58,21 @@ void plotImages(const std::vector<cv::Mat>& Images , \
         // 整个图像集的绘图尺寸。它的宽度是所有图像宽高比之和乘以4.5，高度固定为4.5
         double totalRatio = std::accumulate(ratios.begin() , ratios.end() , 0.0);
         double figureWidth = totalRatio * 4.5;
-        cv::Size2f figureSize(static_cast<double>(figureWidth) * dpi, 4.5 * dpi);
-        cv::Mat figure(figureSize, CV_8UC3, cv::Scalar(255, 255, 255));
+        cv::Size2f figureSize((static_cast<double>(figureWidth) + pad) * dpi, 4.5 * dpi);
+        cv::Mat figure(figureSize, CV_8UC3);
+
+        auto kpts0 = kpts_pair.first;
+        auto kpts1 = kpts_pair.second;
 
         int x_offset = 0;
         for (unsigned int i = 0; i < n; ++i) {
             const cv::Mat& image = Images[i];
             cv::cvtColor(image , image , cv::COLOR_BGR2RGB);
             const std::string& title = Titles[i];
-            // const std::string& cmap = Cmaps[i];
             
             cv::Mat resized_image;
-            cv::Rect roi(cv::Point(x_offset, 0), cv::Size(static_cast<int>(ratios[i] * figureSize.height), figureSize.height));
+            cv::Rect roi(cv::Point(x_offset, 0), cv::Size(static_cast<int>(ratios[i] * figureSize.height), \
+                            figureSize.height));
             cv::resize(image , resized_image , roi.size());
             resized_image.copyTo(figure(roi));
 
@@ -62,33 +82,24 @@ void plotImages(const std::vector<cv::Mat>& Images , \
             }
             
             x_offset += resized_image.cols;
+            x_offset += (pad * dpi);
         }
 
-        auto kpts0 = kpts_pair.first;
-        auto kpts1 = kpts_pair.second;
-        // std::cout << "kpts0.size() : " << kpts0.size() << std::endl;
-        // for (int i = 0 ; i < kpts0.size() ; i++)
-        // {
-        //     // printf("%.2f " , kpts0[i]);
-        //     std::cout << kpts0[i] << " ";
-        // }
-        // std::cout << "\nkpts1.size() : " << kpts1.size() << std::endl;
-        // for (int i = 0 ; i < kpts1.size() ; i++)
-        // {
-        //     // printf("%.2f " , kpts1[i]);
-        //     std::cout << kpts1[i] << " ";
+        plotMatches(figure , kpts0 , kpts1 , x_offset);
+        if (show)
+        {
+            cv::imshow("Figure", figure);
+            cv::waitKey(0);
+            cv::destroyAllWindows();
+        }
 
-        // }
-        // // plotMatches();
-
-        // cv::imshow("Image Plot", figure);
-        // cv::waitKey(0);
-        // cv::destroyAllWindows();
+        return figure;
     }
     catch(const std::exception& e)
     {
         std::cerr << "[ERROR] PlotImagesError : " << e.what() << '\n';
     }
+
 }
 
 void plotKeypoints()
@@ -107,8 +118,3 @@ void plotKeypoints()
 
 }
 
-void plotMatches(const std::vector<cv::Point2f>& kpts0, const std::vector<cv::Point2f>& kpts1, \
-            const cv::Scalar& color = cv::Scalar(0, 255, 0), float lw = 1.5, int ps = 4)
-{
-    assert(kpts0.size() == kpts1.size());
-}

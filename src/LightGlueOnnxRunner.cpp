@@ -7,7 +7,6 @@
 #pragma once
 
 #include "utils.h"
-#include "viz2d.h"
 #include "transform.h"
 #include "LightGlueOnnxRunner.h"
 
@@ -138,79 +137,72 @@ int LightGlueOnnxRunner::Inference(Configuration cfg , const cv::Mat& src , cons
     return EXIT_SUCCESS;
 }
 
+
 int LightGlueOnnxRunner::PostProcess(Configuration cfg)
 {
     try{
         std::vector<int64_t> kpts0_Shape = output_tensors[0].GetTensorTypeAndShapeInfo().GetShape();
         int64_t* kpts0 = (int64_t*)output_tensors[0].GetTensorMutableData<void>();
-        printf("[RESULT INFO] kpts0 Shape : (%d , %d , %d)\n" , kpts0_Shape[0] , kpts0_Shape[1] , kpts0_Shape[2]);
+        // 在Python里面是一个（batch = 1 , kpts_num , 2）的array，那么在C++里输出的长度就应该是kpts_num * 2
+        // int kpts0_length = kpts0_Shape[1] * 2;
+        printf("[RESULT INFO] kpts0 Shape : (%lld , %lld , %lld)\n" , kpts0_Shape[0] , kpts0_Shape[1] , kpts0_Shape[2]);
 
         std::vector<int64_t> kpts1_Shape = output_tensors[1].GetTensorTypeAndShapeInfo().GetShape();
         int64_t* kpts1 = (int64_t*)output_tensors[1].GetTensorMutableData<void>();
-        printf("[RESULT INFO] kpts1 Shape : (%d , %d , %d)\n" , kpts1_Shape[0] , kpts1_Shape[1] , kpts1_Shape[2]);
+        // int kpts1_length = kpts1_Shape[1] * 2;
+        printf("[RESULT INFO] kpts1 Shape : (%lld , %lld , %lld)\n" , kpts1_Shape[0] , kpts1_Shape[1] , kpts1_Shape[2]);
 
         std::vector<int64_t> matches0_Shape = output_tensors[2].GetTensorTypeAndShapeInfo().GetShape();
         int64_t* matches0 = (int64_t*)output_tensors[2].GetTensorMutableData<void>();
         int match0_Counts = matches0_Shape[1];
-        printf("[RESULT INFO] matches0 Shape : (%d , %d)\n" , matches0_Shape[0] , matches0_Shape[1]);
+        printf("[RESULT INFO] matches0 Shape : (%lld , %lld)\n" , matches0_Shape[0] , matches0_Shape[1]);
 
         std::vector<int64_t> matches1_Shape = output_tensors[3].GetTensorTypeAndShapeInfo().GetShape();
         int64_t* matches1 = (int64_t*)output_tensors[3].GetTensorMutableData<void>();
         int match1_Counts = matches1_Shape[1];
-        printf("[RESULT INFO] matches1 Shape : (%d , %d)\n" , matches1_Shape[0] , matches1_Shape[1]);
+        printf("[RESULT INFO] matches1 Shape : (%lld , %lld)\n" , matches1_Shape[0] , matches1_Shape[1]);
 
         std::vector<int64_t> mscore0_Shape = output_tensors[4].GetTensorTypeAndShapeInfo().GetShape();
         float* mscores0 = (float*)output_tensors[4].GetTensorMutableData<void>();
         std::vector<int64_t> mscore1_Shape = output_tensors[5].GetTensorTypeAndShapeInfo().GetShape();
         float* mscores1 = (float*)output_tensors[5].GetTensorMutableData<void>();
 
-        float* kpts0_f = new float[kpts0_Shape[1]];
-        float* kpts1_f = new float[kpts1_Shape[1]];
-
         // Process kpts0 and kpts1
-        for (int i = 0; i < kpts0_Shape[1]; ++i) {
-            kpts0_f[i] = (kpts0[i] + 0.5) / scale - 0.5;
+        std::vector<cv::Point2f> kpts0_f , kpts1_f;
+        for (int i = 0; i < kpts0_Shape[1] * 2; i += 2) 
+        {
+            kpts0_f.emplace_back(cv::Point2f(
+                (kpts0[i] + 0.5) / scale - 0.5 , (kpts0[i + 1] + 0.5) / scale - 0.5));
         }
-        for (int i = 0; i < kpts1_Shape[1]; ++i) {
-            kpts1_f[i] = (kpts1[i] + 0.5) / scale - 0.5;
+        for (int i = 0; i < kpts1_Shape[1] * 2; i += 2) 
+        {
+            kpts1_f.emplace_back(cv::Point2f(
+                (kpts1[i] + 0.5) / scale - 0.5 , (kpts1[i + 1] + 0.5) / scale - 0.5)
+            );
         }
 
         // Create match indices
         std::vector<int64_t> validIndices;
         for (int i = 0; i < matches0_Shape[1]; ++i) {
-            if (matches0[i] > -1) {
-                validIndices.push_back(i);
-            }
+            if (matches0[i] > -1) { validIndices.emplace_back(i);}
         }
 
         std::vector<int64_t> matches;
-        std::vector<cv::Point2f> m_kpts0;
-        std::vector<cv::Point2f> m_kpts1;
+        std::vector<cv::Point2f> m_kpts0 , m_kpts1;
         for (int i : validIndices) {
-            matches.push_back(i);
-            matches.push_back(matches0[i]);
+            matches.emplace_back(i);
+            matches.emplace_back(matches0[i]);
         }
-        printf("Matches:\n");
         for (size_t i = 0; i < matches.size(); i += 2) {
-            printf("(%lld, %lld)\n", matches[i], matches[i + 1]);
-        }
-
-        // TODO
-        for (size_t i = 0; i < matches.size(); i += 2) {
-            if (i < matches.size() && matches[i] < matches0_Shape[1] && matches[i + 1] < matches1_Shape[1]) 
+            if (i < matches.size() && matches[i] < matches0_Shape[1]) 
             {
-                // m_kpts0.push_back(kpts0_f[matches[i]]);
-                // m_kpts1.push_back(kpts1_f[matches[i + 1]]);
-                m_kpts0.push_back(cv::Point2f(kpts0_f[matches[i]] , kpts0_f[matches[i + 1]]));
-                m_kpts1.push_back(cv::Point2f(kpts1_f[matches[i]] , kpts1_f[matches[i + 1]]));
+                m_kpts0.emplace_back(kpts0_f[i]);
+                m_kpts1.emplace_back(kpts1_f[i + 1]);
             }
         }
 
         keypoints_result.first = m_kpts0;
         keypoints_result.second = m_kpts1;
-
-        delete[] kpts0_f;
-        delete[] kpts1_f;
         
         std::cout << "[INFO] Postprocessing operation completed successfully" << std::endl;
     }
@@ -223,7 +215,7 @@ int LightGlueOnnxRunner::PostProcess(Configuration cfg)
     return EXIT_SUCCESS;
 }
 
-cv::Mat LightGlueOnnxRunner::InferenceImage(Configuration cfg , 
+std::pair<std::vector<cv::Point2f>, std::vector<cv::Point2f>> LightGlueOnnxRunner::InferenceImage(Configuration cfg , 
         const cv::Mat& srcImage, const cv::Mat& destImage)
 {   
     std::cout << "< - * -------- INFERENCEIMAGE START -------- * ->" << std::endl;
@@ -239,19 +231,12 @@ cv::Mat LightGlueOnnxRunner::InferenceImage(Configuration cfg ,
     cv::Mat src = PreProcess(cfg , srcImage_copy);
     std::cout << "[INFO] => PreProcess destImage" << std::endl;
     cv::Mat dest = PreProcess(cfg , destImage_copy);
-    // Inference
+
     Inference(cfg , src , dest);
+
     PostProcess(cfg);
 
-    if (cfg.viz)
-    {
-        std::vector<cv::Mat> ImagesPair = {srcImage , destImage};
-        std::vector<std::string> TitlePair = {"srcImage" , "destImage"};
-        auto kpts_pair = GetKeypointsResult();
-        plotImages(ImagesPair , kpts_pair , TitlePair);
-    }
-
-    return cv::Mat();
+    return GetKeypointsResult();
 }
 
 float LightGlueOnnxRunner::GetMatchThresh()

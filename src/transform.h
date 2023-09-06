@@ -16,41 +16,21 @@ cv::Mat NormalizeImage(cv::Mat& Image)
     return normalizedImage;
 }
 
-void NormalizeKeypoints(cv::Mat& Image , int h , int w)
+std::vector<cv::Point2f> NormalizeKeypoints(std::vector<cv::Point2f> kpts, int h , int w)
 {
-    
-}
+    cv::Size size(w, h);
+    cv::Point2f shift(static_cast<float>(w) / 2, static_cast<float>(h) / 2);
+    float scale = static_cast<float>(std::max(w, h)) / 2;
 
-std::tuple<int , int> GetPreProcessShape(int old_h , int old_w , int long_side_length)
-{
-	double scale = long_side_length * 1.0 / MAX(old_h , old_w);
-	int new_h = (int)(old_h * scale + 0.5);
-	int new_w = (int)(old_w * scale + 0.5);
-	std::tuple<int, int> newShape(new_h, new_w);
-	return newShape;
-}
+    std::vector<cv::Point2f> normalizedKpts;
+    normalizedKpts.reserve(kpts.size());
 
-cv::Mat ResizeImageByLongestSide(cv::Mat Image , int size , \
-        const std::string& interp = "area")
-{
-    int mode = cv::INTER_AREA;
-    if (interp == "linear") {
-        mode = cv::INTER_LINEAR;
-    } else if (interp == "cubic") {
-        mode = cv::INTER_CUBIC;
-    } else if (interp == "nearest") {
-        mode = cv::INTER_NEAREST;
+    for (const cv::Point2f& kpt : kpts) {
+        cv::Point2f normalizedKpt = (kpt - shift) / scale;
+        normalizedKpts.push_back(normalizedKpt);
     }
 
-    cv::Mat resizeImage;
-	const unsigned int h = Image.rows;
-	const unsigned int w = Image.cols;
-	std::tuple<int, int> newShape = GetPreProcessShape(h , w , size);
-
-	cv::resize(Image , resizeImage , \
-        cv::Size(std::get<1>(newShape) , std::get<0>(newShape)) , mode);
-
-	return resizeImage;
+    return normalizedKpts;
 }
 
 cv::Mat ResizeImage(const cv::Mat& Image, int size, float& scale , const std::string& fn="max", \
