@@ -22,9 +22,22 @@ void plotMatches(const cv::Mat& figure , const std::vector<cv::Point2f>& kpts0, 
             cv::Point2f pt0 = kpts0[i];
             cv::Point2f pt1 = kpts1[i];
             pt1.x += x_offset;
-            cv::line(figure, pt0, pt1, color, lw);
-            cv::circle(figure, pt0, ps, color, -1);
-            cv::circle(figure, pt1, ps, color, -1);
+            
+            // 实现matplotlib.patches.ConnectionPatch中的clip_on效果
+            if (pt0.x > (figure.rows / 2) || pt0.y > figure.rows || \
+                pt1.x > figure.cols || pt1.y > figure.rows) 
+            {
+                continue;
+            }
+
+            // std::cout << "Pt0 : " << pt0 << std::endl;
+            // std::cout << "Pt1 : " << pt1 << std::endl;
+            cv::line(figure, pt0, pt1, color, lw , cv::LINE_AA);
+            if (ps > 0)
+            {
+                cv::circle(figure, pt0, ps, color, -1);
+                cv::circle(figure, pt1, ps, color, -1);
+            }
         }
     }
 }
@@ -32,7 +45,7 @@ void plotMatches(const cv::Mat& figure , const std::vector<cv::Point2f>& kpts0, 
 cv::Mat plotImages(const std::vector<cv::Mat>& Images , \
                 std::pair<std::vector<cv::Point2f>, std::vector<cv::Point2f>> kpts_pair , \
                 const std::vector<std::string>& Titles = std::vector<std::string>(1 , "image") , \
-                int dpi = 100, bool adaptive = true , float pad = 0.1f , bool show = true)
+                int dpi = 100, bool adaptive = true , float pad = 0.01f , bool show = true)
 {
     /*
     Func:
@@ -53,12 +66,12 @@ cv::Mat plotImages(const std::vector<cv::Mat>& Images , \
             } else {
                 ratios.emplace_back(4.0 / 3.0);
             }
-        }
+        } // 1.501466 1.501466
 
         // 整个图像集的绘图尺寸。它的宽度是所有图像宽高比之和乘以4.5，高度固定为4.5
         double totalRatio = std::accumulate(ratios.begin() , ratios.end() , 0.0);
         double figureWidth = totalRatio * 4.5;
-        cv::Size2f figureSize((static_cast<double>(figureWidth) + pad) * dpi, 4.5 * dpi);
+        cv::Size2f figureSize((static_cast<double>(figureWidth)) * dpi, 4.5 * dpi);
         cv::Mat figure(figureSize, CV_8UC3);
 
         auto kpts0 = kpts_pair.first;
@@ -81,11 +94,11 @@ cv::Mat plotImages(const std::vector<cv::Mat>& Images , \
                             cv::FONT_HERSHEY_SIMPLEX , 1 , cv::Scalar(255,255,255) , 2);            
             }
             
-            x_offset += resized_image.cols;
-            x_offset += (pad * dpi);
+            if(i == 0) {x_offset += resized_image.cols;}
         }
 
         plotMatches(figure , kpts0 , kpts1 , x_offset);
+
         if (show)
         {
             cv::imshow("Figure", figure);

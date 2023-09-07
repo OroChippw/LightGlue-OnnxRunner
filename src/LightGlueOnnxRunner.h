@@ -30,16 +30,14 @@ private:
     std::vector<std::vector<int64_t>> OutputNodeShapes;
 
     float matchThresh = 0.0f;
-    float scale = 1.0f;
 
-    float scales0 = 1.0f;
-    float scales1 = 1.0f;
+    std::vector<float> scales = {1.0f , 1.0f};
 
     std::vector<Ort::Value> output_tensors;
     std::pair<std::vector<cv::Point2f>, std::vector<cv::Point2f>> keypoints_result;
 
 private:
-    cv::Mat PreProcess(Configuration cfg , const cv::Mat& srcImage);
+    cv::Mat PreProcess(Configuration cfg , const cv::Mat& srcImage , float& scale);
     int Inference(Configuration cfg , const cv::Mat& src , const cv::Mat& dest);
     int PostProcess(Configuration cfg);
 
