@@ -17,8 +17,13 @@
 #include "Configuration.h"
 #include "LightGlueOnnxRunner.h"
 
-std::vector<cv::Mat> ReadImage(std::vector<cv::String> image_filelist , bool grayscale)
+std::vector<cv::Mat> ReadImage(std::vector<cv::String> image_filelist , bool grayscale = false)
 {
+    /*
+    Func:
+        Read an image from path as RGB or grayscale
+
+    */
     int mode = cv::IMREAD_COLOR;
     if (grayscale)
     {
@@ -65,7 +70,7 @@ int main(int argc , char* argv[])
     /* ****** CONFIG END ****** */
     
     /* Temp Start */
-    model_path = "D:\\OroChiLab\\LightGlue-OnnxRunner\\models\\superpoint\\superpoint_lightglue_end2end.onnx";
+    model_path = "D:\\OroChiLab\\LightGlue\\weights\\onnx\\superpoint_lightglue_end2end.onnx";
     extractor_type = "SuperPoint";
     image_path1 = "D:\\OroChiLab\\LightGlue\\data\\dir_0";
     image_path2 = "D:\\OroChiLab\\LightGlue\\data\\dir_1";
