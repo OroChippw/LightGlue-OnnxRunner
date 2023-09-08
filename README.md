@@ -7,12 +7,12 @@ LightGlue-OnnxRunner is a repository hosts the C++ inference code of LightGlue i
 
 ![superpoint_lightglue_end2end效果图](assets/superpoint_lightglue_end2end.png)  
 <p align="center">
-<em>superpoint_lightglue_end2end.onnx效果图</em>
+<em>superpoint_lightglue_end2end.onnx renderings</em>
 </p>  
 
 ![disk_lightglue_end2end效果图](assets/disk_lightglue_end2end.png)
 <p align="center">
-<em>disk_lightglue_end2end.onnx效果图</em>
+<em>disk_lightglue_end2end.onnx renderings</em>
 </p>
 ## Attention⚠️
 Currently, the interface only supports CPU execution.The specific experimental data and equipment used are shown below. And the inferface is only supported on Windows and may encounter issues when running on Linux.
