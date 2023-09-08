@@ -41,7 +41,6 @@ int LightGlueOnnxRunner::InitOrtEnv(Configuration cfg)
         {
             InputNodeNames.emplace_back(_strdup(session->GetInputNameAllocated(i , allocator).get()));
             InputNodeShapes.emplace_back(session->GetInputTypeInfo(i).GetTensorTypeAndShapeInfo().GetShape());
-            // std::cout << "input_name.get() : " << input_name.get() << std::endl;
         }
 
         const size_t numOutputNodes = session->GetOutputCount();
@@ -50,9 +49,8 @@ int LightGlueOnnxRunner::InitOrtEnv(Configuration cfg)
         {
             OutputNodeNames.emplace_back(_strdup(session->GetOutputNameAllocated(i , allocator).get()));
             OutputNodeShapes.emplace_back(session->GetOutputTypeInfo(i).GetTensorTypeAndShapeInfo().GetShape());
-            // std::cout << "output_name.get() : " << output_name.get() << std::endl;
         }
-        // std::cout << "[INFO] numInputNodes : " << numInputNodes << " numOutputNodes : " << numOutputNodes << std::endl;
+        
         std::cout << "[INFO] ONNXRuntime environment created successfully." << std::endl;
     }
     catch(const std::exception& ex)
@@ -67,15 +65,16 @@ int LightGlueOnnxRunner::InitOrtEnv(Configuration cfg)
 cv::Mat LightGlueOnnxRunner::PreProcess(Configuration cfg , const cv::Mat& Image , float& scale)
 {
 	float temp_scale = scale;
+    cv::Mat tempImage = Image.clone();
     std::cout << "[INFO] Image info :  width : " << Image.cols << " height :  " << Image.rows << std::endl;
-    cv::Mat resultImage = NormalizeImage(ResizeImage(Image ,cfg.image_size , scale));
-    std::cout << "[INFO] Scale from "<< temp_scale << " to "<< scale << std::endl;
     if (cfg.extractorType == "superpoint")
     {
         std::cout << "[INFO] ExtractorType Superpoint turn RGB to Grayscale" << std::endl;
-        resultImage = RGB2Grayscale(resultImage);
+        tempImage = RGB2Grayscale(tempImage);
     }
-
+    cv::Mat resultImage = NormalizeImage(ResizeImage(tempImage ,cfg.image_size , scale));
+    std::cout << "[INFO] Scale from "<< temp_scale << " to "<< scale << std::endl;
+   
     return resultImage;
 }
 
@@ -84,27 +83,53 @@ int LightGlueOnnxRunner::Inference(Configuration cfg , const cv::Mat& src , cons
     try 
     {   
         // Dynamic InputNodeShapes is [1,3,-1,-1]  
-        std::cout << "[INFO] srcImage Size : " << src.size() << " srcImage Channels : " << src.channels() << std::endl;
-        std::cout << "[INFO] destImage Size : " << dest.size() << " destImage Channels : " << src.channels() << std::endl;
-
+        std::cout << "[INFO] srcImage Size : " << src.size() << " Channels : " << src.channels() << std::endl;
+        std::cout << "[INFO] destImage Size : " << dest.size() << " Channels : " << src.channels() << std::endl;
+        
+        // Build src input node shape and destImage input node shape
+        int srcInputTensorSize , destInputTensorSize;
         if (cfg.extractorType == "superpoint")
         {
-            // src input node shape
             InputNodeShapes[0] = {1 , 1 , src.size().height , src.size().width};
-            // destImage input node shape
             InputNodeShapes[1] = {1 , 1 , dest.size().height , dest.size().width};
-        }else 
+        }else if (cfg.extractorType == "disk")
         {
             InputNodeShapes[0] = {1 , 3 , src.size().height , src.size().width};
             InputNodeShapes[1] = {1 , 3 , dest.size().height , dest.size().width};
         }
+        srcInputTensorSize = InputNodeShapes[0][0] * InputNodeShapes[0][1] * InputNodeShapes[0][2] * InputNodeShapes[0][3];
+        destInputTensorSize = InputNodeShapes[1][0] * InputNodeShapes[1][1] * InputNodeShapes[1][2] * InputNodeShapes[1][3];
+
+        std::vector<float> srcInputTensorValues(srcInputTensorSize);
+        std::vector<float> destInputTensorValues(destInputTensorSize);
+
+        if (cfg.extractorType == "superpoint")
+        {
+            srcInputTensorValues.assign(src.begin<float>() , src.end<float>());
+            destInputTensorValues.assign(dest.begin<float>() , dest.end<float>());
+        }else{             
+            int src_height = src.rows;
+            int src_width = src.cols;
+            for (int y = 0; y < src_height; y++) {
+                for (int x = 0; x < src_width; x++) {
+                    cv::Vec3f pixel = src.at<cv::Vec3f>(y, x); // RGB
+                    srcInputTensorValues[y * src_width + x] = pixel[2];
+                    srcInputTensorValues[src_height * src_width + y * src_width + x] = pixel[1];
+                    srcInputTensorValues[2 * src_height * src_width + y * src_width + x] = pixel[0];
+                }
+            }
+            int dest_height = dest.rows;
+            int dest_width = dest.cols;
+            for (int y = 0; y < dest_height; y++) {
+                for (int x = 0; x < dest_width; x++) {
+                    cv::Vec3f pixel = dest.at<cv::Vec3f>(y, x);
+                    destInputTensorValues[y * dest_width + x] = pixel[2];
+                    destInputTensorValues[dest_height * dest_width + y * dest_width + x] = pixel[1];
+                    destInputTensorValues[2 * dest_height * dest_width + y * dest_width + x] = pixel[0];
+                }
+            }
+        }
         
-        std::vector<float> srcInputTensorValues(src.total());
-        srcInputTensorValues.assign(src.begin<float>() , src.end<float>());
-
-        std::vector<float> destInputTensorValues(dest.total());
-        destInputTensorValues.assign(dest.begin<float>() , dest.end<float>());
-
         auto memory_info_handler = Ort::MemoryInfo::CreateCpu(OrtAllocatorType::OrtDeviceAllocator, OrtMemType::OrtMemTypeCPU);
         
         std::vector<Ort::Value> input_tensors;
@@ -203,13 +228,11 @@ int LightGlueOnnxRunner::PostProcess(Configuration cfg)
             matches.insert(std::make_pair(i, matches0[i]));
         }
 
-        std::cout << "[INFO] matches Size : " << matches.size() << std::endl;
+        std::cout << "[RESULT INFO] matches Size : " << matches.size() << std::endl;
 
         for (const auto& match : matches) {
-            int first = match.first;
-            int second = match.second;
-            m_kpts0.emplace_back(kpts0_f[first]);
-            m_kpts1.emplace_back(kpts1_f[second]);
+            m_kpts0.emplace_back(kpts0_f[match.first]);
+            m_kpts1.emplace_back(kpts1_f[match.second]);
         }
 
         keypoints_result.first = m_kpts0;
