@@ -10,15 +10,15 @@
 
 cv::Mat NormalizeImage(cv::Mat& Image)
 {
-    cv::Mat normalizedImage;
+    cv::Mat normalizedImage = Image.clone();
 
     if (Image.channels() == 3) {
-        cv::cvtColor(Image, normalizedImage, cv::COLOR_BGR2RGB);
+        cv::cvtColor(normalizedImage, normalizedImage, cv::COLOR_BGR2RGB);
         normalizedImage.convertTo(normalizedImage, CV_32F, 1.0 / 255.0);
     } else if (Image.channels() == 1) {
         Image.convertTo(normalizedImage, CV_32F, 1.0 / 255.0);
     } else {
-        throw std::invalid_argument("Not an image");
+        throw std::invalid_argument("[ERROR] Not an image");
     }
 
 

@@ -28,7 +28,7 @@ message(STATUS "OPENCV_DIR Path: ${OPENCV_DIR}")
 include_directories(${OpenCV_INCLUDE_DIRS})
 include_directories(${OPENCV_DIR}/include)
 link_directories("${OPENCV_DIR}/x64/vc16/lib")
-set(OpenCV_LIB opencv_world480d)
+set(OpenCV_LIB opencv_world480)
 
 
 # compile own file

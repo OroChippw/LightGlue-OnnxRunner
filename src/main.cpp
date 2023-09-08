@@ -16,6 +16,7 @@
 #include "viz2d.h"
 #include "Configuration.h"
 #include "LightGlueOnnxRunner.h"
+#include "LightGlueDecoupleOnnxRunner.h"
 
 std::vector<cv::Mat> ReadImage(std::vector<cv::String> image_filelist , bool grayscale = false)
 {
@@ -41,7 +42,7 @@ std::vector<cv::Mat> ReadImage(std::vector<cv::String> image_filelist , bool gra
         }
         if (!grayscale)
         {
-             cv::cvtColor(image, image, cv::COLOR_BGR2RGB);
+            cv::cvtColor(image, image, cv::COLOR_BGR2RGB); // BGR -> RGB
         }
         image_matlist.emplace_back(image);
     }
@@ -60,8 +61,9 @@ int main(int argc , char* argv[])
     unsigned int image_size = 512; 
     bool grayscale = false;
     bool end2end = true;
-    std::string device = "${Device}"; // "cpu" or "cuda"
+    std::string device = "${Device}"; // Now only support "cpu"
     bool viz = true;
+    float matchThresh = 0.0f;
 
     std::string image_path1 = "${YourImageDirPath1}";
     std::string image_path2 = "${YourImageDirPath2}";
@@ -69,20 +71,25 @@ int main(int argc , char* argv[])
 
     /* ****** CONFIG END ****** */
     
-    /* Temp Start */
-    model_path = "D:\\OroChiLab\\LightGlue\\weights\\onnx\\superpoint_lightglue_end2end.onnx";
+    /* ****** Usage Example Start ****** */
+    model_path = "D:\\OroChiLab\\LightGlue-OnnxRunner\\models\\superpoint\\superpoint_lightglue_end2end.onnx";
     extractor_type = "SuperPoint";
+
+    // model_path = "D:\\OroChiLab\\LightGlue\\weights\\onnx\\disk_lightglue_end2end.onnx";
+    // extractor_type = "Disk";
+
     image_path1 = "D:\\OroChiLab\\LightGlue\\data\\dir_0";
     image_path2 = "D:\\OroChiLab\\LightGlue\\data\\dir_1";
     device = "cpu";
-    /* Temp End */
+    /* ****** Usage Example End ****** */
 
     Configuration cfg;
     cfg.modelPath = model_path;
     cfg.extractorType = extractor_type;
     cfg.isEndtoEnd = end2end;
-    cfg.GrayScale = grayscale;
+    cfg.grayScale = grayscale;
     cfg.image_size = image_size;
+    cfg.threshold = matchThresh;
     cfg.device = device;
     cfg.viz = viz;
 
@@ -93,6 +100,9 @@ int main(int argc , char* argv[])
         std::cerr << "[ERROR] Unsupported feature extractor type: " << extractor_type << std::endl;
 
         return EXIT_FAILURE;
+    }else
+    {
+        std::cout << "[INFO] Extractor Type : " << cfg.extractorType << std::endl;
     }
 
     std::vector<cv::String> image_filelist1;
@@ -110,13 +120,15 @@ int main(int argc , char* argv[])
     }
 
     std::cout << "[INFO] => Building Image Matlist1" << std::endl;
-    std::vector<cv::Mat> image_matlist1 = ReadImage(image_filelist1 , cfg.GrayScale);
+    std::vector<cv::Mat> image_matlist1 = ReadImage(image_filelist1 , cfg.grayScale);
     std::cout << "[INFO] => Building Image Matlist2" << std::endl;
-    std::vector<cv::Mat> image_matlist2 = ReadImage(image_filelist2 , cfg.GrayScale);
+    std::vector<cv::Mat> image_matlist2 = ReadImage(image_filelist2 , cfg.grayScale);
 
+    /* - * -------- End to End Example -------- * - */
     // Init Onnxruntime Env
     LightGlueOnnxRunner FeatureMatcher(std::thread::hardware_concurrency());
     FeatureMatcher.InitOrtEnv(cfg);
+    FeatureMatcher.SetMatchThresh(cfg.threshold);
     
     auto iter1 = image_matlist1.begin();
     auto iter2 = image_matlist2.begin();

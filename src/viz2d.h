@@ -12,26 +12,25 @@
 
 void plotMatches(const cv::Mat& figure , const std::vector<cv::Point2f>& kpts0, \
                 const std::vector<cv::Point2f>& kpts1, int x_offset = 0 , \
-                const cv::Scalar& color = cv::Scalar(0, 255, 0), float lw = 1, int ps = 1)
+                std::vector<double> ratios = {1.0f , 1.0f}, const cv::Scalar& color = cv::Scalar(0, 255, 0), \
+                float lw = 1, int ps = 2)
 {
     assert(kpts0.size() == kpts1.size());
     if (lw > 0)
     {
         for (unsigned int i = 0 ; i  < kpts0.size() ; i++)
         {
-            cv::Point2f pt0 = kpts0[i];
-            cv::Point2f pt1 = kpts1[i];
+            // 因为画布是计算比率缩放的，所以点也要进行缩放，同时右侧的图x坐标要加上左边的图的宽
+            cv::Point2f pt0 = kpts0[i] / ratios[0];
+            cv::Point2f pt1 = kpts1[i] / ratios[1];
             pt1.x += x_offset;
             
             // 实现matplotlib.patches.ConnectionPatch中的clip_on效果
-            if (pt0.x > (figure.rows / 2) || pt0.y > figure.rows || \
-                pt1.x > figure.cols || pt1.y > figure.rows) 
+            if (pt0.x > x_offset || pt0.y > figure.rows || \
+                pt1.x < x_offset || pt1.y > figure.rows) 
             {
                 continue;
             }
-
-            // std::cout << "Pt0 : " << pt0 << std::endl;
-            // std::cout << "Pt1 : " << pt1 << std::endl;
             cv::line(figure, pt0, pt1, color, lw , cv::LINE_AA);
             if (ps > 0)
             {
@@ -66,7 +65,7 @@ cv::Mat plotImages(const std::vector<cv::Mat>& Images , \
             } else {
                 ratios.emplace_back(4.0 / 3.0);
             }
-        } // 1.501466 1.501466
+        }
 
         // 整个图像集的绘图尺寸。它的宽度是所有图像宽高比之和乘以4.5，高度固定为4.5
         double totalRatio = std::accumulate(ratios.begin() , ratios.end() , 0.0);
@@ -76,6 +75,9 @@ cv::Mat plotImages(const std::vector<cv::Mat>& Images , \
 
         auto kpts0 = kpts_pair.first;
         auto kpts1 = kpts_pair.second;
+        std::cout << "[RESULT INFO] kpts0 Size : " << kpts0.size() << std::endl;
+        std::cout << "[RESULT INFO] kpts1 Size : " << kpts1.size() << std::endl;
+
 
         int x_offset = 0;
         for (unsigned int i = 0; i < n; ++i) {
@@ -97,7 +99,7 @@ cv::Mat plotImages(const std::vector<cv::Mat>& Images , \
             if(i == 0) {x_offset += resized_image.cols;}
         }
 
-        plotMatches(figure , kpts0 , kpts1 , x_offset);
+        plotMatches(figure , kpts0 , kpts1 , x_offset , ratios);
 
         if (show)
         {
