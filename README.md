@@ -63,13 +63,10 @@ All models are available in repository *[fabio-sim/LightGlue-ONNX](https://githu
 | :------------------:| :---------------: | :---------------: | :---------------: | :---------------: | 
 
 #### End-to-End🌟🌟🌟
-Models with the (*_flash.onnx) suffix format represent enabled Flash Attention  
 | Extractor Type | Model Name | Model Size(MB/GB) | CPU speed(ms) | GPU speed(ms)[TODO] | 
 | :------------------:| :---------------: | :---------------: | :---------------: | :---------------: | 
 | SuperPoint | superpoint_lightglue_end2end.onnx | 50.1MB | Debug:2181ms Release: 1829ms |    | 
-| SuperPoint | superpoint_lightglue_end2end_flash.onnx | 49.5MB |  |    | 
 | DISK | disk_lightglue_end2end.onnx | 48.9MB | Debug:3312ms Release: 3287ms |  | 
-| DISK | disk_lightglue_end2end_flash.onnx | 48.9MB |  |     | 
 
 ### License
 This project is licensed under the MIT License.

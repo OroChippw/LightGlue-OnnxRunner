@@ -6,12 +6,11 @@
 *********************************/
 #pragma once
 
-#include "utils.h"
-#include "transform.h"
 #include "LightGlueOnnxRunner.h"
 
 int LightGlueOnnxRunner::InitOrtEnv(Configuration cfg)
 {
+    std::cout << "< - * -------- INITIAL ONNXRUNTIME ENV START -------- * ->" << std::endl;
     try
     {
         env = Ort::Env(ORT_LOGGING_LEVEL_WARNING, "LightGlueOnnxRunner");
@@ -28,9 +27,9 @@ int LightGlueOnnxRunner::InitOrtEnv(Configuration cfg)
 
         #if _WIN32
             std::cout << "[INFO] Env _WIN32 change modelpath from multi byte to wide char ..." << std::endl;
-            const wchar_t* modelPath = multi_Byte_To_Wide_Char(cfg.modelPath);
+            const wchar_t* modelPath = multi_Byte_To_Wide_Char(cfg.lightgluePath);
         #else
-            const char* modelPath = cfg.modelPath;
+            const char* modelPath = cfg.lightgluePath;
         #endif // _WIN32
 
         session = std::make_unique<Ort::Session>(env , modelPath , session_options);
@@ -50,6 +49,8 @@ int LightGlueOnnxRunner::InitOrtEnv(Configuration cfg)
             OutputNodeNames.emplace_back(_strdup(session->GetOutputNameAllocated(i , allocator).get()));
             OutputNodeShapes.emplace_back(session->GetOutputTypeInfo(i).GetTensorTypeAndShapeInfo().GetShape());
         }
+
+        delete modelPath;
         
         std::cout << "[INFO] ONNXRuntime environment created successfully." << std::endl;
     }
@@ -72,7 +73,9 @@ cv::Mat LightGlueOnnxRunner::PreProcess(Configuration cfg , const cv::Mat& Image
         std::cout << "[INFO] ExtractorType Superpoint turn RGB to Grayscale" << std::endl;
         tempImage = RGB2Grayscale(tempImage);
     }
-    cv::Mat resultImage = NormalizeImage(ResizeImage(tempImage ,cfg.image_size , scale));
+    std::string fn = "max";
+    std::string interp = "area";
+    cv::Mat resultImage = NormalizeImage(ResizeImage(tempImage ,cfg.image_size , scale , fn , interp));
     std::cout << "[INFO] Scale from "<< temp_scale << " to "<< scale << std::endl;
    
     return resultImage;
@@ -129,7 +132,7 @@ int LightGlueOnnxRunner::Inference(Configuration cfg , const cv::Mat& src , cons
                 }
             }
         }
-        
+
         auto memory_info_handler = Ort::MemoryInfo::CreateCpu(OrtAllocatorType::OrtDeviceAllocator, OrtMemType::OrtMemTypeCPU);
         
         std::vector<Ort::Value> input_tensors;

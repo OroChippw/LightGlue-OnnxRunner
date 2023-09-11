@@ -8,10 +8,20 @@
 #pragma warning(disable:4819) 
 #pragma warning(disable:4267) 
 
+#ifndef UTILS_H
+#define UTILS_H
+
 #include <iostream>
+#include <fstream>
 #include <Windows.h>
 
-wchar_t* multi_Byte_To_Wide_Char(std::string& pKey)
+
+inline bool fileExists(const std::string& filename) {
+    std::ifstream file(filename.c_str());
+    return file.good();
+}
+
+inline wchar_t* multi_Byte_To_Wide_Char(std::string& pKey)
 {
     // string 转 char*
     const char* pCStrKey = pKey.c_str();
@@ -23,3 +33,5 @@ wchar_t* multi_Byte_To_Wide_Char(std::string& pKey)
     // 不要忘记在使用完wchar_t*后delete[]释放内存
     return pWCStrKey;
 }
+
+#endif // UTILS_H

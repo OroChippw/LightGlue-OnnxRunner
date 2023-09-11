@@ -10,7 +10,9 @@
 
 struct Configuration
 {
-    std::string modelPath;
+    std::string lightgluePath;
+    std::string extractorPath;
+    
     std::string extractorType;
     bool isEndtoEnd = true;
     bool grayScale = false;

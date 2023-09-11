@@ -14,9 +14,12 @@
 #include <opencv2/opencv.hpp>
 
 #include "viz2d.h"
+#include "utils.h"
 #include "Configuration.h"
+#include "BaseOnnxRunner.h"
 #include "LightGlueOnnxRunner.h"
 #include "LightGlueDecoupleOnnxRunner.h"
+
 
 std::vector<cv::Mat> ReadImage(std::vector<cv::String> image_filelist , bool grayscale = false)
 {
@@ -34,7 +37,7 @@ std::vector<cv::Mat> ReadImage(std::vector<cv::String> image_filelist , bool gra
     std::vector<cv::Mat> image_matlist;
     for (const auto& file : image_filelist)
     {
-        // std::cout << "[FILE INFO] : " << file << std::endl;
+        std::cout << "[FILE INFO] : " << file << std::endl;
         cv::Mat image = cv::imread(file , mode);
         if (image.empty())
         {
@@ -54,13 +57,15 @@ std::vector<cv::Mat> ReadImage(std::vector<cv::String> image_filelist , bool gra
 int main(int argc , char* argv[])
 {
     /* ****** CONFIG START ****** */
-    std::string model_path = "${OnnxModelPath}";
+    std::string lightglue_path = "${LightGlueOnnxModelPath}";
+    std::string extractor_path = "${ExtractorOnnxMOdelPath}";
+
     // Type of feature extractor. Supported extractors are 'superpoint' and 'disk'.
     std::string extractor_type = "${ModelExtractorType}";
     // Sample image size for ONNX tracing , resize the longer side of the images to this value. Supported image size {512 , 1024 , 2048}
     unsigned int image_size = 512; 
     bool grayscale = false;
-    bool end2end = true;
+    bool end2end;
     std::string device = "${Device}"; // Now only support "cpu"
     bool viz = true;
     float matchThresh = 0.0f;
@@ -72,19 +77,28 @@ int main(int argc , char* argv[])
     /* ****** CONFIG END ****** */
     
     /* ****** Usage Example Start ****** */
-    model_path = "D:\\OroChiLab\\LightGlue-OnnxRunner\\models\\superpoint\\superpoint_lightglue_end2end.onnx";
-    extractor_type = "SuperPoint";
-
-    // model_path = "D:\\OroChiLab\\LightGlue\\weights\\onnx\\disk_lightglue_end2end.onnx";
-    // extractor_type = "Disk";
-
     image_path1 = "D:\\OroChiLab\\LightGlue\\data\\dir_0";
     image_path2 = "D:\\OroChiLab\\LightGlue\\data\\dir_1";
     device = "cpu";
+    // End to End
+    end2end = true;
+    lightglue_path = "D:\\OroChiLab\\LightGlue-OnnxRunner\\models\\superpoint\\superpoint_lightglue_end2end.onnx";
+    extractor_type = "SuperPoint";
+    // lightglue_path = "D:\\OroChiLab\\LightGlue\\weights\\onnx\\disk_lightglue_end2end.onnx";
+    // extractor_type = "Disk";
+
+    // Decouple
+    // end2end = false;
+    // extractor_path = "D:\\OroChiLab\\LightGlue-OnnxRunner\\models\\superpoint\\superpoint.onnx";
+    // lightglue_path = "D:\\OroChiLab\\LightGlue-OnnxRunner\\models\\superpoint\\superpoint_lightglue.onnx";
+    // extractor_type = "SuperPoint";
+
     /* ****** Usage Example End ****** */
 
     Configuration cfg;
-    cfg.modelPath = model_path;
+    cfg.lightgluePath = lightglue_path;
+    cfg.extractorPath = extractor_path;
+
     cfg.extractorType = extractor_type;
     cfg.isEndtoEnd = end2end;
     cfg.grayScale = grayscale;
@@ -105,6 +119,22 @@ int main(int argc , char* argv[])
         std::cout << "[INFO] Extractor Type : " << cfg.extractorType << std::endl;
     }
 
+
+    if (fileExists(cfg.lightgluePath))
+    {
+        if (cfg.isEndtoEnd)
+        {
+            if (!fileExists(cfg.lightgluePath))
+            {
+                std::cerr << "[ERROR] The specified LightGlue mode at is not end-to-end. Please pass the extractor_path argument." << extractor_type << std::endl;
+                return EXIT_FAILURE;
+            }
+        }
+    }else 
+    {
+        std::cerr << "[ERROR] LightGlue onnx model Path is not exist : " << cfg.lightgluePath << std::endl;
+    }
+    
     std::vector<cv::String> image_filelist1;
     std::vector<cv::String> image_filelist2;
     cv::glob(image_path1 , image_filelist1);
@@ -125,19 +155,25 @@ int main(int argc , char* argv[])
     std::vector<cv::Mat> image_matlist2 = ReadImage(image_filelist2 , cfg.grayScale);
 
     /* - * -------- End to End Example -------- * - */
-    // Init Onnxruntime Env
-    LightGlueOnnxRunner FeatureMatcher(std::thread::hardware_concurrency());
-    FeatureMatcher.InitOrtEnv(cfg);
-    FeatureMatcher.SetMatchThresh(cfg.threshold);
+    BaseFeatureMatchOnnxRunner* FeatureMatcher;
+    if (cfg.isEndtoEnd)
+    {
+        FeatureMatcher = new LightGlueOnnxRunner();
+        FeatureMatcher->InitOrtEnv(cfg);
+        FeatureMatcher->SetMatchThresh(cfg.threshold);
+    }else {
+        FeatureMatcher = new LightGlueDecoupleOnnxRunner();
+        FeatureMatcher->InitOrtEnv(cfg);
+        FeatureMatcher->SetMatchThresh(cfg.threshold);
+    }
     
     auto iter1 = image_matlist1.begin();
     auto iter2 = image_matlist2.begin();
-
     for (;iter1 != image_matlist1.end() && iter2 !=image_matlist2.end() ; \
             ++iter1, ++iter2)
     {
         auto startTime = std::chrono::steady_clock::now();
-        auto kpts_result = FeatureMatcher.InferenceImage(cfg , *iter1 , *iter2);
+        auto kpts_result = FeatureMatcher->InferenceImage(cfg , *iter1 , *iter2);
         auto endTime = std::chrono::steady_clock::now();
 
         auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
@@ -149,7 +185,7 @@ int main(int argc , char* argv[])
             std::vector<std::string> titlePair = {"srcImage" , "destImage"};
             cv::Mat figure = plotImages(imagesPair , kpts_result , titlePair);
         }
-        auto kpts = FeatureMatcher.GetKeypointsResult();
+        auto kpts = FeatureMatcher->GetKeypointsResult();
     }
     
     return EXIT_SUCCESS;

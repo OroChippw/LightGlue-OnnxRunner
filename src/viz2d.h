@@ -75,8 +75,8 @@ cv::Mat plotImages(const std::vector<cv::Mat>& Images , \
 
         auto kpts0 = kpts_pair.first;
         auto kpts1 = kpts_pair.second;
-        std::cout << "[RESULT INFO] kpts0 Size : " << kpts0.size() << std::endl;
-        std::cout << "[RESULT INFO] kpts1 Size : " << kpts1.size() << std::endl;
+        // std::cout << "[RESULT INFO] kpts0 Size : " << kpts0.size() << std::endl;
+        // std::cout << "[RESULT INFO] kpts1 Size : " << kpts1.size() << std::endl;
 
 
         int x_offset = 0;
@@ -113,8 +113,9 @@ cv::Mat plotImages(const std::vector<cv::Mat>& Images , \
     catch(const std::exception& e)
     {
         std::cerr << "[ERROR] PlotImagesError : " << e.what() << '\n';
+        
+        return cv::Mat();
     }
-
 }
 
 void plotKeypoints()
