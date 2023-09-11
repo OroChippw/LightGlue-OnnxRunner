@@ -20,6 +20,8 @@ Currently, the interface only supports CPU execution.The specific experimental d
 
 ## Updates📰
 - **[2023.09.08]** : LightGlueOnnxRunner supporting end-to-end model inference of SuperPoint and DISK  
+- **[2023.09.11]** : LightGlueDecoupleOnnxRunner supporting decouple model inference of SuperPoint/DISK + LightGlue   
+
 
 ## Development Enviroments🖥️
 >  - Windows 11 Professional 

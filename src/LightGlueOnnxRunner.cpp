@@ -68,14 +68,15 @@ cv::Mat LightGlueOnnxRunner::PreProcess(Configuration cfg , const cv::Mat& Image
 	float temp_scale = scale;
     cv::Mat tempImage = Image.clone();
     std::cout << "[INFO] Image info :  width : " << Image.cols << " height :  " << Image.rows << std::endl;
-    if (cfg.extractorType == "superpoint")
-    {
-        std::cout << "[INFO] ExtractorType Superpoint turn RGB to Grayscale" << std::endl;
-        tempImage = RGB2Grayscale(tempImage);
-    }
+    
     std::string fn = "max";
     std::string interp = "area";
     cv::Mat resultImage = NormalizeImage(ResizeImage(tempImage ,cfg.image_size , scale , fn , interp));
+    if (cfg.extractorType == "superpoint")
+    {
+        std::cout << "[INFO] ExtractorType Superpoint turn RGB to Grayscale" << std::endl;
+        resultImage = RGB2Grayscale(resultImage);
+    }
     std::cout << "[INFO] Scale from "<< temp_scale << " to "<< scale << std::endl;
    
     return resultImage;
@@ -152,7 +153,8 @@ int LightGlueOnnxRunner::Inference(Configuration cfg , const cv::Mat& src , cons
                     input_tensors.size() , OutputNodeNames.data() , OutputNodeNames.size());
         
         auto time_end = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double> diff = time_end - time_start;
+        auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(time_end - time_start).count();
+
 
         for (auto& tensor : output_tensor)
         {
@@ -164,7 +166,7 @@ int LightGlueOnnxRunner::Inference(Configuration cfg , const cv::Mat& src , cons
         output_tensors = std::move(output_tensor);
 
         std::cout << "[INFO] LightGlueOnnxRunner inference finish ..." << std::endl;
-	    std::cout << "[INFO] Inference cost time : " << diff.count() << "s" << std::endl;
+	    std::cout << "[INFO] Inference cost time : " << diff << "ms" << std::endl;
     } 
     catch(const std::exception& ex)
     {

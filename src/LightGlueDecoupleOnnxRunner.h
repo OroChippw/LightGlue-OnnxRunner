@@ -10,6 +10,7 @@
 #define LIGHTGLUE_DECOUPLE_ONNX_RUNNER_H
 
 #include <iostream>
+#include <chrono>
 #include <opencv2/opencv.hpp>
 #include <onnxruntime_cxx_api.h>
 
@@ -54,7 +55,7 @@ private:
     std::pair<std::vector<cv::Point2f> , float*> Extractor_PostProcess(Configuration cfg , std::vector<Ort::Value> tensor);
 
     std::vector<cv::Point2f> Matcher_PreProcess(std::vector<cv::Point2f> kpts, int h , int w);
-    int Matcher_Inference(std::vector<cv::Point2f> kpts0 , std::vector<cv::Point2f> kpts1 , float* desc0 , float* desc1);
+    int Matcher_Inference(Configuration cfg , std::vector<cv::Point2f> kpts0 , std::vector<cv::Point2f> kpts1 , float* desc0 , float* desc1);
     int Matcher_PostProcess(Configuration cfg , std::vector<cv::Point2f> kpts0 , std::vector<cv::Point2f> kpts1);
 
 public:

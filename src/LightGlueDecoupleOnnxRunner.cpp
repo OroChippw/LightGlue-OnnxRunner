@@ -93,14 +93,15 @@ cv::Mat LightGlueDecoupleOnnxRunner::Extractor_PreProcess(Configuration cfg , co
 	float temp_scale = scale;
     cv::Mat tempImage = Image.clone();
     std::cout << "[INFO] Image info :  width : " << Image.cols << " height :  " << Image.rows << std::endl;
-    if (cfg.extractorType == "superpoint")
-    {
-        std::cout << "[INFO] ExtractorType Superpoint turn RGB to Grayscale" << std::endl;
-        tempImage = RGB2Grayscale(tempImage);
-    }
+    
     std::string fn = "max";
     std::string interp = "area";
     cv::Mat resultImage = NormalizeImage(ResizeImage(tempImage , cfg.image_size , scale , fn , interp));
+    if (cfg.extractorType == "superpoint")
+    {
+        std::cout << "[INFO] ExtractorType Superpoint turn RGB to Grayscale" << std::endl;
+        resultImage = RGB2Grayscale(resultImage);
+    }
     std::cout << "[INFO] Scale from "<< temp_scale << " to "<< scale << std::endl;
    
     return resultImage;
@@ -159,7 +160,8 @@ int LightGlueDecoupleOnnxRunner::Extractor_Inference(Configuration cfg , const c
                     input_tensors.size() , ExtractorOutputNodeNames.data() , ExtractorOutputNodeNames.size());
         
         auto time_end = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double> diff = time_end - time_start;
+        auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(time_end - time_start).count();
+
 
         for (auto& tensor : output_tensor)
         {
@@ -172,7 +174,7 @@ int LightGlueDecoupleOnnxRunner::Extractor_Inference(Configuration cfg , const c
         extractor_outputtensors.emplace_back(std::move(output_tensor));
 
         std::cout << "[INFO] LightGlueDecoupleOnnxRunner Extractor inference finish ..." << std::endl;
-	    std::cout << "[INFO] Extractor inference cost time : " << diff.count() << "s" << std::endl;
+	    std::cout << "[INFO] Extractor inference cost time : " << diff << "ms" << std::endl;
     } 
     catch(const std::exception& ex)
     {
@@ -190,10 +192,10 @@ std::pair<std::vector<cv::Point2f> , float*> LightGlueDecoupleOnnxRunner::Extrac
     try{
         std::vector<int64_t> kpts_Shape = tensor[0].GetTensorTypeAndShapeInfo().GetShape();
         int64_t* kpts = (int64_t*)tensor[0].GetTensorMutableData<void>();
-        for (int i = 0 ; i < kpts_Shape[1] ; i++)
-        {
-            std::cout << kpts[i] << " ";
-        }
+        // for (int i = 0 ; i < kpts_Shape[1] ; i++)
+        // {
+        //     std::cout << kpts[i] << " ";
+        // }
         printf("[RESULT INFO] kpts Shape : (%lld , %lld , %lld)\n" , kpts_Shape[0] , kpts_Shape[1] , kpts_Shape[2]);
 
         std::vector<int64_t> score_Shape = tensor[1].GetTensorTypeAndShapeInfo().GetShape();
@@ -229,7 +231,7 @@ std::vector<cv::Point2f> LightGlueDecoupleOnnxRunner::Matcher_PreProcess(std::ve
 }
 
 
-int LightGlueDecoupleOnnxRunner::Matcher_Inference(std::vector<cv::Point2f> kpts0 , \
+int LightGlueDecoupleOnnxRunner::Matcher_Inference(Configuration cfg , std::vector<cv::Point2f> kpts0 , \
             std::vector<cv::Point2f> kpts1 , float* desc0 , float* desc1)
 {
     std::cout << "< - * -------- Matcher Inference START -------- * ->"<< std::endl;
@@ -237,8 +239,16 @@ int LightGlueDecoupleOnnxRunner::Matcher_Inference(std::vector<cv::Point2f> kpts
     {
         MatcherInputNodeShapes[0] = {1 , static_cast<int>(kpts0.size()) , 2};
         MatcherInputNodeShapes[1] = {1 , static_cast<int>(kpts1.size()) , 2};
-        MatcherInputNodeShapes[2] = {1 , static_cast<int>(kpts0.size()) , 256};
-        MatcherInputNodeShapes[3] = {1 , static_cast<int>(kpts1.size()) , 256};
+        if (cfg.extractorType == "superpoint")
+        {
+            MatcherInputNodeShapes[2] = {1 , static_cast<int>(kpts0.size()) , 256};
+            MatcherInputNodeShapes[3] = {1 , static_cast<int>(kpts1.size()) , 256};
+        }else
+        {
+            MatcherInputNodeShapes[2] = {1 , static_cast<int>(kpts0.size()) , 128};
+            MatcherInputNodeShapes[3] = {1 , static_cast<int>(kpts1.size()) , 128};
+        }   
+        
 
         auto memory_info_handler = Ort::MemoryInfo::CreateCpu(OrtAllocatorType::OrtDeviceAllocator, OrtMemType::OrtMemTypeCPU);
 
@@ -281,7 +291,7 @@ int LightGlueDecoupleOnnxRunner::Matcher_Inference(std::vector<cv::Point2f> kpts
                     input_tensors.size() , MatcherOutputNodeNames.data() , MatcherOutputNodeNames.size());
         
         auto time_end = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double> diff = time_end - time_start;
+        auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(time_end - time_start).count();
 
         for (auto& tensor : output_tensor)
         {
@@ -293,7 +303,7 @@ int LightGlueDecoupleOnnxRunner::Matcher_Inference(std::vector<cv::Point2f> kpts
         matcher_outputtensors = std::move(output_tensor);
 
         std::cout << "[INFO] LightGlueDecoupleOnnxRunner Matcher inference finish ..." << std::endl;
-        std::cout << "[INFO] Matcher inference cost time : " << diff.count() << "s" << std::endl;
+        std::cout << "[INFO] Matcher inference cost time : " << diff << "ms" << std::endl;
     }
     catch(const std::exception& ex)
     {
@@ -398,7 +408,7 @@ std::pair<std::vector<cv::Point2f>, std::vector<cv::Point2f>> LightGlueDecoupleO
     auto normal_kpts0 = Matcher_PreProcess(src_extract.first , src.rows , src.cols);
     auto normal_kpts1 = Matcher_PreProcess(dest_extract.first , dest.rows , dest.cols);
 
-    Matcher_Inference(normal_kpts0 , normal_kpts1 , src_extract.second , dest_extract.second);
+    Matcher_Inference(cfg , normal_kpts0 , normal_kpts1 , src_extract.second , dest_extract.second);
 
     Matcher_PostProcess(cfg , src_extract.first , dest_extract.first);
 

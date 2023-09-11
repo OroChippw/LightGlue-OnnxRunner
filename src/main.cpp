@@ -80,10 +80,11 @@ int main(int argc , char* argv[])
     image_path1 = "D:\\OroChiLab\\LightGlue\\data\\dir_0";
     image_path2 = "D:\\OroChiLab\\LightGlue\\data\\dir_1";
     device = "cpu";
-    // End to End
-    end2end = true;
-    lightglue_path = "D:\\OroChiLab\\LightGlue-OnnxRunner\\models\\superpoint\\superpoint_lightglue_end2end.onnx";
-    extractor_type = "SuperPoint";
+    
+    // End to End 
+    // end2end = true;
+    // lightglue_path = "D:\\OroChiLab\\LightGlue-OnnxRunner\\models\\superpoint\\superpoint_lightglue_end2end.onnx";
+    // extractor_type = "SuperPoint";
     // lightglue_path = "D:\\OroChiLab\\LightGlue\\weights\\onnx\\disk_lightglue_end2end.onnx";
     // extractor_type = "Disk";
 
@@ -92,6 +93,9 @@ int main(int argc , char* argv[])
     // extractor_path = "D:\\OroChiLab\\LightGlue-OnnxRunner\\models\\superpoint\\superpoint.onnx";
     // lightglue_path = "D:\\OroChiLab\\LightGlue-OnnxRunner\\models\\superpoint\\superpoint_lightglue.onnx";
     // extractor_type = "SuperPoint";
+    // extractor_path = "D:\\OroChiLab\\LightGlue-OnnxRunner\\models\\disk\\disk.onnx";
+    // lightglue_path = "D:\\OroChiLab\\LightGlue-OnnxRunner\\models\\disk\\disk_lightglue.onnx";
+    // extractor_type = "Disk";
 
     /* ****** Usage Example End ****** */
 
@@ -169,6 +173,8 @@ int main(int argc , char* argv[])
     
     auto iter1 = image_matlist1.begin();
     auto iter2 = image_matlist2.begin();
+    std::string mode = cfg.isEndtoEnd ? "LightGlueOnnxRunner" : "LightGlueDecoupleOnnxRunner";
+
     for (;iter1 != image_matlist1.end() && iter2 !=image_matlist2.end() ; \
             ++iter1, ++iter2)
     {
@@ -177,7 +183,7 @@ int main(int argc , char* argv[])
         auto endTime = std::chrono::steady_clock::now();
 
         auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
-        std::cout << "[INFO] LightGlueOnnxRunner single picture whole process takes time : " \
+        std::cout << "[INFO] " << mode << " single picture whole process takes time : " \
                     << elapsedTime << " ms" << std::endl;
         if (cfg.viz)
         {
