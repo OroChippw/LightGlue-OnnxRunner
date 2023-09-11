@@ -6,12 +6,11 @@
 *********************************/
 #pragma once
 
-#include "utils.h"
-#include "transform.h"
 #include "LightGlueOnnxRunner.h"
 
 int LightGlueOnnxRunner::InitOrtEnv(Configuration cfg)
 {
+    std::cout << "< - * -------- INITIAL ONNXRUNTIME ENV START -------- * ->" << std::endl;
     try
     {
         env = Ort::Env(ORT_LOGGING_LEVEL_WARNING, "LightGlueOnnxRunner");
@@ -28,9 +27,9 @@ int LightGlueOnnxRunner::InitOrtEnv(Configuration cfg)
 
         #if _WIN32
             std::cout << "[INFO] Env _WIN32 change modelpath from multi byte to wide char ..." << std::endl;
-            const wchar_t* modelPath = multi_Byte_To_Wide_Char(cfg.modelPath);
+            const wchar_t* modelPath = multi_Byte_To_Wide_Char(cfg.lightgluePath);
         #else
-            const char* modelPath = cfg.modelPath;
+            const char* modelPath = cfg.lightgluePath;
         #endif // _WIN32
 
         session = std::make_unique<Ort::Session>(env , modelPath , session_options);
@@ -50,6 +49,8 @@ int LightGlueOnnxRunner::InitOrtEnv(Configuration cfg)
             OutputNodeNames.emplace_back(_strdup(session->GetOutputNameAllocated(i , allocator).get()));
             OutputNodeShapes.emplace_back(session->GetOutputTypeInfo(i).GetTensorTypeAndShapeInfo().GetShape());
         }
+
+        delete modelPath;
         
         std::cout << "[INFO] ONNXRuntime environment created successfully." << std::endl;
     }
@@ -67,12 +68,15 @@ cv::Mat LightGlueOnnxRunner::PreProcess(Configuration cfg , const cv::Mat& Image
 	float temp_scale = scale;
     cv::Mat tempImage = Image.clone();
     std::cout << "[INFO] Image info :  width : " << Image.cols << " height :  " << Image.rows << std::endl;
+    
+    std::string fn = "max";
+    std::string interp = "area";
+    cv::Mat resultImage = NormalizeImage(ResizeImage(tempImage ,cfg.image_size , scale , fn , interp));
     if (cfg.extractorType == "superpoint")
     {
         std::cout << "[INFO] ExtractorType Superpoint turn RGB to Grayscale" << std::endl;
-        tempImage = RGB2Grayscale(tempImage);
+        resultImage = RGB2Grayscale(resultImage);
     }
-    cv::Mat resultImage = NormalizeImage(ResizeImage(tempImage ,cfg.image_size , scale));
     std::cout << "[INFO] Scale from "<< temp_scale << " to "<< scale << std::endl;
    
     return resultImage;
@@ -129,7 +133,7 @@ int LightGlueOnnxRunner::Inference(Configuration cfg , const cv::Mat& src , cons
                 }
             }
         }
-        
+
         auto memory_info_handler = Ort::MemoryInfo::CreateCpu(OrtAllocatorType::OrtDeviceAllocator, OrtMemType::OrtMemTypeCPU);
         
         std::vector<Ort::Value> input_tensors;
@@ -149,7 +153,8 @@ int LightGlueOnnxRunner::Inference(Configuration cfg , const cv::Mat& src , cons
                     input_tensors.size() , OutputNodeNames.data() , OutputNodeNames.size());
         
         auto time_end = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double> diff = time_end - time_start;
+        auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(time_end - time_start).count();
+
 
         for (auto& tensor : output_tensor)
         {
@@ -161,7 +166,7 @@ int LightGlueOnnxRunner::Inference(Configuration cfg , const cv::Mat& src , cons
         output_tensors = std::move(output_tensor);
 
         std::cout << "[INFO] LightGlueOnnxRunner inference finish ..." << std::endl;
-	    std::cout << "[INFO] Inference cost time : " << diff.count() << "s" << std::endl;
+	    std::cout << "[INFO] Inference cost time : " << diff << "ms" << std::endl;
     } 
     catch(const std::exception& ex)
     {
