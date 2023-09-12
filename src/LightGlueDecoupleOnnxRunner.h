@@ -25,8 +25,8 @@ class LightGlueDecoupleOnnxRunner : public BaseFeatureMatchOnnxRunner
 private:
 	const unsigned int num_threads;
 
-    Ort::Env env;
-    Ort::SessionOptions session_options;
+    Ort::Env env0 , env1;
+    Ort::SessionOptions session_options0 , session_options1;
     std::unique_ptr<Ort::Session> ExtractorSession , MatcherSession;
     Ort::AllocatorWithDefaultOptions allocator;
 
@@ -41,6 +41,8 @@ private:
     std::vector<std::vector<int64_t>> MatcherOutputNodeShapes;
 
     float matchThresh = 0.0f;
+    long long extractor_timer = 0.0f;
+    long long matcher_timer = 0.0f;
 
     std::vector<float> scales = {1.0f , 1.0f};
 
@@ -64,6 +66,7 @@ public:
 
     float GetMatchThresh();
     void SetMatchThresh(float thresh);
+    double GetTimer(std::string name);
 
     std::pair<std::vector<cv::Point2f>, std::vector<cv::Point2f>> GetKeypointsResult();
 

@@ -13,16 +13,33 @@ int LightGlueDecoupleOnnxRunner::InitOrtEnv(Configuration cfg)
     std::cout << "< - * -------- INITIAL ONNXRUNTIME ENV START -------- * ->" << std::endl;
     try
     {
-        env = Ort::Env(ORT_LOGGING_LEVEL_WARNING, "LightGlueDecoupleOnnxRunner");
-        session_options = Ort::SessionOptions();
-        session_options.SetInterOpNumThreads(std::thread::hardware_concurrency());
-        session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
+        env0 = Ort::Env(ORT_LOGGING_LEVEL_WARNING, "LightGlueDecoupleOnnxRunner Extractor");
+        env1 = Ort::Env(ORT_LOGGING_LEVEL_WARNING, "LightGlueDecoupleOnnxRunner Matcher");
+
+        session_options0 = Ort::SessionOptions();
+        session_options0.SetInterOpNumThreads(std::thread::hardware_concurrency());
+        session_options0.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
+
+        session_options1 = Ort::SessionOptions();
+        session_options1.SetInterOpNumThreads(std::thread::hardware_concurrency());
+        session_options1.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
 
         if (cfg.device == "cuda") {
             std::cout << "[INFO] OrtSessionOptions Append CUDAExecutionProvider" << std::endl;
             OrtCUDAProviderOptions cuda_options{};
+
             cuda_options.device_id = 0;
-            session_options.AppendExecutionProvider_CUDA(cuda_options);
+            cuda_options.cudnn_conv_algo_search = OrtCudnnConvAlgoSearchDefault;
+            cuda_options.gpu_mem_limit = 0; 
+            cuda_options.arena_extend_strategy = 1; // 设置GPU内存管理中的Arena扩展策略
+            cuda_options.do_copy_in_default_stream = 1; // 是否在默认CUDA流中执行数据复制
+            cuda_options.has_user_compute_stream = 0;
+            cuda_options.default_memory_arena_cfg = nullptr;
+
+            session_options0.AppendExecutionProvider_CUDA(cuda_options);
+            session_options0.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_EXTENDED);
+            session_options1.AppendExecutionProvider_CUDA(cuda_options);
+            session_options1.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_EXTENDED);
         }
 
         #if _WIN32
@@ -34,8 +51,8 @@ int LightGlueDecoupleOnnxRunner::InitOrtEnv(Configuration cfg)
             const char* matcher_modelPath = cfg.lightgluePath;
         #endif // _WIN32
 
-        ExtractorSession = std::make_unique<Ort::Session>(env , extractor_modelPath , session_options);
-        MatcherSession = std::make_unique<Ort::Session>(env , matcher_modelPath , session_options);
+        ExtractorSession = std::make_unique<Ort::Session>(env0 , extractor_modelPath , session_options0);
+        MatcherSession = std::make_unique<Ort::Session>(env1 , matcher_modelPath , session_options1);
 
         // Initial Extractor 
         size_t numInputNodes = ExtractorSession->GetInputCount();
@@ -161,7 +178,7 @@ int LightGlueDecoupleOnnxRunner::Extractor_Inference(Configuration cfg , const c
         
         auto time_end = std::chrono::high_resolution_clock::now();
         auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(time_end - time_start).count();
-
+        extractor_timer += diff;
 
         for (auto& tensor : output_tensor)
         {
@@ -292,6 +309,7 @@ int LightGlueDecoupleOnnxRunner::Matcher_Inference(Configuration cfg , std::vect
         
         auto time_end = std::chrono::high_resolution_clock::now();
         auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(time_end - time_start).count();
+        matcher_timer += diff;
 
         for (auto& tensor : output_tensor)
         {
@@ -412,6 +430,9 @@ std::pair<std::vector<cv::Point2f>, std::vector<cv::Point2f>> LightGlueDecoupleO
 
     Matcher_PostProcess(cfg , src_extract.first , dest_extract.first);
 
+    extractor_outputtensors.clear();
+    matcher_outputtensors.clear();
+
     return GetKeypointsResult();
 }
 
@@ -423,6 +444,17 @@ float LightGlueDecoupleOnnxRunner::GetMatchThresh()
 void LightGlueDecoupleOnnxRunner::SetMatchThresh(float thresh)
 {
     this->matchThresh = thresh;
+}
+
+double LightGlueDecoupleOnnxRunner::GetTimer(std::string name)
+{
+    if (name == "extractor")
+    {
+        return this->extractor_timer;
+    }else
+    {
+        return this->matcher_timer;
+    }
 }
 
 std::pair<std::vector<cv::Point2f>, std::vector<cv::Point2f>> LightGlueDecoupleOnnxRunner::GetKeypointsResult()

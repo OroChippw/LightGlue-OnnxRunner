@@ -79,7 +79,7 @@ int main(int argc , char* argv[])
     /* ****** Usage Example Start ****** */
     image_path1 = "D:\\OroChiLab\\LightGlue\\data\\dir_0";
     image_path2 = "D:\\OroChiLab\\LightGlue\\data\\dir_1";
-    device = "cpu";
+    device = "cuda";
     
     // End to End 
     // end2end = true;
@@ -192,6 +192,14 @@ int main(int argc , char* argv[])
             cv::Mat figure = plotImages(imagesPair , kpts_result , titlePair);
         }
         auto kpts = FeatureMatcher->GetKeypointsResult();
+    }
+    if (cfg.isEndtoEnd)
+    {
+        printf("[INFO] End2End model inference %d images mean cost %.2f ms" , image_filelist1.size() , (FeatureMatcher->GetTimer() / image_filelist1.size()));
+    }else
+    {
+        printf("[INFO] Decouple model extractor inference %d images mean cost %.2f ms , matcher mean cost %.2f" , image_filelist1.size() , \
+                    (FeatureMatcher->GetTimer("extractor") / image_filelist1.size()) , (FeatureMatcher->GetTimer() / image_filelist1.size()));
     }
     
     return EXIT_SUCCESS;

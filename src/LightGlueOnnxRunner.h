@@ -36,6 +36,7 @@ private:
     std::vector<std::vector<int64_t>> OutputNodeShapes;
 
     float matchThresh = 0.0f;
+    long long timer = 0.0f;
 
     std::vector<float> scales = {1.0f , 1.0f};
 
@@ -53,6 +54,7 @@ public:
 
     float GetMatchThresh();
     void SetMatchThresh(float thresh);
+    double GetTimer(std::string name);
 
     std::pair<std::vector<cv::Point2f>, std::vector<cv::Point2f>> GetKeypointsResult();
 
