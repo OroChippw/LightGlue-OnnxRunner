@@ -61,14 +61,16 @@ cmake --build .
 Environment Device : i5-13500H + NVIDIA GeForce RTX 4060 Laptop GPU（8GB）.  
 All models are available in repository *[fabio-sim/LightGlue-ONNX](https://github.com/fabio-sim/LightGlue-ONNX)*  
 #### Decouple (TODO)
-| Extractor Type | Model Name | Model Size(MB/GB) | CPU speed(ms) | GPU speed(ms)[TODO] | 
-| :------------------:| :---------------: | :---------------: | :---------------: | :---------------: | 
+| Extractor Type | Extractor Model Name | CPU speed(ms) | GPU speed(ms) | Matcher Model Name | CPU speed(ms) | GPU speed(ms) |
+| --------------- | -------------------- | ------------- | ------------- | ------------------ | ------------- | ------------- |
+| SuperPoint      | superpoint.onnx       | Debug:123ms Release: 73ms |                | superpoint_lightglue.onnx | Debug:2384ms Release: 2112ms | Debug: Release:  |
+| DISK      | disk.onnx       | Debug:341ms Release: 336ms |                | disk_lightglue.onnx | Debug:3347ms Release: 3257ms | Debug: Release:  |
 
 #### End-to-End🌟🌟🌟
 | Extractor Type | Model Name | Model Size(MB/GB) | CPU speed(ms) | GPU speed(ms)[TODO] | 
 | :------------------:| :---------------: | :---------------: | :---------------: | :---------------: | 
-| SuperPoint | superpoint_lightglue_end2end.onnx | 50.1MB | Debug:2181ms Release: 1829ms |    | 
-| DISK | disk_lightglue_end2end.onnx | 48.9MB | Debug:3312ms Release: 3287ms |  | 
+| SuperPoint | superpoint_lightglue_end2end.onnx | 50.1MB | Debug:2181ms Release: 1829ms |  Debug: Release:   | 
+| DISK | disk_lightglue_end2end.onnx | 48.9MB | Debug:3312ms Release: 3287ms | Debug: Release:  | 
 
 ### License
 This project is licensed under the MIT License.
