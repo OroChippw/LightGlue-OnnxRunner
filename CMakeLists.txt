@@ -17,11 +17,18 @@ include(cmake/platform.cmake)  # checking platform
 
 # link third-party library onnxruntime-win-x64-1.14.1 and opencv4
 set(ONNXRUNTIME_DIR  ${CMAKE_SOURCE_DIR}/third_party/onnxruntime-win-x64-1.14.1)
-message(STATUS "ONNXRUNTIME_DIR Path: ${ONNXRUNTIME_DIR}")
+set(ONNXRUNTIME_GPU_DIR  ${CMAKE_SOURCE_DIR}/third_party/onnxruntime-win-x64-gpu-1.15.0)
 
-include_directories(${ONNXRUNTIME_DIR}/include)
-link_directories("${ONNXRUNTIME_DIR}/lib")
-set(ONNXRUNTIME_LIB onnxruntime onnxruntime_providers_shared)
+message(STATUS "ONNXRUNTIME_DIR Path: ${ONNXRUNTIME_DIR}")
+message(STATUS "ONNXRUNTIME_GPU_DIR Path: ${ONNXRUNTIME_GPU_DIR}")
+
+# include_directories(${ONNXRUNTIME_DIR}/include)
+# link_directories("${ONNXRUNTIME_DIR}/lib")
+# set(ONNXRUNTIME_LIB onnxruntime onnxruntime_providers_shared)
+
+include_directories(${ONNXRUNTIME_GPU_DIR}/include)
+link_directories("${ONNXRUNTIME_GPU_DIR}/lib")
+set(ONNXRUNTIME_GPU_LIB onnxruntime onnxruntime_providers_shared onnxruntime_providers_cuda)
 
 set(OPENCV_DIR  ${CMAKE_SOURCE_DIR}/third_party/opencv480/build)
 message(STATUS "OPENCV_DIR Path: ${OPENCV_DIR}")
@@ -39,3 +46,5 @@ add_executable(main ${SRC_LIST})
 target_compile_features(main PRIVATE cxx_std_17)
 
 target_link_libraries(main ${OpenCV_LIB} ${ONNXRUNTIME_LIB} ${OpenCV_LIBS})
+target_link_libraries(main ${OpenCV_LIB} ${ONNXRUNTIME_GPU_LIB} ${OpenCV_LIBS})
+

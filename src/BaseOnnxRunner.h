@@ -18,7 +18,17 @@ public:
         return EXIT_SUCCESS;
     }
 
+    virtual float GetMatchThresh()
+    {
+        return 0.0f;
+    }
+
     virtual void SetMatchThresh(float thresh){}
+    
+    virtual double GetTimer(std::string name="matcher")
+    {
+        return 0.0f;
+    }
 
     virtual std::pair<std::vector<cv::Point2f>, std::vector<cv::Point2f>> InferenceImage(Configuration cfg , \
             const cv::Mat& srcImage, const cv::Mat& destImage)
