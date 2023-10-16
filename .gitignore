@@ -23,3 +23,8 @@ data/
 *.onnx
 
 
+/run_test
+/run_depends.bat
+/depends.exe
+/src/src.rar
+/src/src
