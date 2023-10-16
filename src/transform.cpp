@@ -92,7 +92,7 @@ cv::Mat ResizeImage(const cv::Mat& Image, int size, float& scale , const std::st
 
 cv::Mat RGB2Grayscale(cv::Mat& Image) {
     cv::Mat resultImage;
-    cv::cvtColor(Image, resultImage, cv::COLOR_BGR2GRAY);
+    cv::cvtColor(Image, resultImage, cv::COLOR_RGB2GRAY);
 
     return resultImage;
 }
