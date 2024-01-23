@@ -59,8 +59,6 @@ int LightGlueOnnxRunner::InitOrtEnv(Configuration cfg)
             OutputNodeNames.emplace_back(_strdup(session->GetOutputNameAllocated(i , allocator).get()));
             OutputNodeShapes.emplace_back(session->GetOutputTypeInfo(i).GetTensorTypeAndShapeInfo().GetShape());
         }
-
-        delete modelPath;
         
         std::cout << "[INFO] ONNXRuntime environment created successfully." << std::endl;
     }
