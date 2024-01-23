@@ -91,9 +91,6 @@ int LightGlueDecoupleOnnxRunner::InitOrtEnv(Configuration cfg)
             MatcherOutputNodeShapes.emplace_back(MatcherSession->GetOutputTypeInfo(i).GetTensorTypeAndShapeInfo().GetShape());
         }
 
-        delete extractor_modelPath;
-        delete matcher_modelPath;
-
         std::cout << "[INFO] ONNXRuntime environment created successfully." << std::endl;
     }
     catch(const std::exception& ex)

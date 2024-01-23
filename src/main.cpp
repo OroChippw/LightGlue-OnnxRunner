@@ -82,9 +82,9 @@ int main(int argc , char* argv[])
     device = "cuda";
     
     // End to End 
-    // end2end = true;
-    // lightglue_path = "D:\\OroChiLab\\LightGlue-OnnxRunner\\models\\superpoint\\superpoint_lightglue_end2end.onnx";
-    // extractor_type = "SuperPoint";
+    end2end = true;
+    lightglue_path = "D:\\OroChiLab\\LightGlue-OnnxRunner\\models\\superpoint\\superpoint_lightglue_end2end.onnx";
+    extractor_type = "SuperPoint";
     // lightglue_path = "D:\\OroChiLab\\LightGlue\\weights\\onnx\\disk_lightglue_end2end.onnx";
     // extractor_type = "Disk";
 
