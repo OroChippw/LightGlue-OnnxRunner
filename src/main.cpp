@@ -66,7 +66,7 @@ int main(int argc , char* argv[])
     unsigned int image_size = 512; 
     bool grayscale = false;
     bool end2end;
-    std::string device = "${Device}"; // Now only support "cpu" / "cuda"
+    std::string device = "${Device}"; // Now only support "cpu"
     bool viz = true;
     float matchThresh = 0.0f;
 
